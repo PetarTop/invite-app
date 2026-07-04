@@ -12,22 +12,14 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
-import {
-  assignGuestToTableAction,
-  createTable,
-  type CreateTableState,
-} from "./actions";
+import type { LayoutTable } from "@/lib/seating-layout";
 
-const initialCreateTableState: CreateTableState = {};
+import { assignGuestToTableAction } from "./actions";
+import { SeatingPlanEditor } from "./seating/seating-plan-editor";
 
-export type SeatingTable = {
-  id: string;
-  event_id: string;
-  name: string;
-  capacity: number;
-};
+export type SeatingTable = LayoutTable;
 
 export type GoingGuest = {
   id: string;
@@ -309,67 +301,6 @@ function DraggableSeatingBoard({
   );
 }
 
-function CreateTableForm({ eventId }: { eventId: string }) {
-  const [state, formAction, pending] = useActionState(
-    createTable,
-    initialCreateTableState,
-  );
-
-  return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="event_id" value={eventId} />
-
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor={`table-name-${eventId}`}
-          className="text-xs font-medium text-zinc-600 dark:text-zinc-400"
-        >
-          Table name
-        </label>
-        <input
-          id={`table-name-${eventId}`}
-          name="name"
-          type="text"
-          required
-          placeholder="Table 1"
-          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor={`table-capacity-${eventId}`}
-          className="text-xs font-medium text-zinc-600 dark:text-zinc-400"
-        >
-          Capacity
-        </label>
-        <input
-          id={`table-capacity-${eventId}`}
-          name="capacity"
-          type="number"
-          min={1}
-          required
-          placeholder="8"
-          className="w-24 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-      >
-        {pending ? "Adding..." : "Add table"}
-      </button>
-
-      {state.error && (
-        <p className="w-full text-sm text-red-600 dark:text-red-400">
-          {state.error}
-        </p>
-      )}
-    </form>
-  );
-}
 
 export function EventSeating({
   eventId,
@@ -493,8 +424,13 @@ export function EventSeating({
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-      <CreateTableForm eventId={eventId} />
+    <div className="mt-4 flex flex-col gap-6 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <SeatingPlanEditor eventId={eventId} tables={initialTables} />
+
+      <div className="flex flex-col gap-4">
+        <h4 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          Assign guests to tables
+        </h4>
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
@@ -528,6 +464,7 @@ export function EventSeating({
           </DragOverlay>
         </DndContext>
       )}
+      </div>
     </div>
   );
 }

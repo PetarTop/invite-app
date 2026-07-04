@@ -7,8 +7,9 @@ import { requireUser } from "@/lib/auth";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
 import { CreateEventForm } from "./create-event-form";
-import { EventSeating, type GoingGuest, type SeatingTable } from "./event-seating";
+import { EventSeating, type GoingGuest } from "./event-seating";
 import { SignOutButton } from "./sign-out-button";
+import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
 
 const GUESTS_SELECT_POLICY_SQL = `grant usage on schema public to anon, authenticated;
 grant select, update on table public.guests to anon, authenticated;
@@ -142,7 +143,7 @@ export default async function DashboardPage() {
   let missingTableIdColumn = false;
   let guestsByEventId = new Map<string, { status: string | null }[]>();
   let goingGuestsByEventId = new Map<string, GoingGuest[]>();
-  let tablesByEventId = new Map<string, SeatingTable[]>();
+  let tablesByEventId = new Map<string, LayoutTable[]>();
   let totalGuests = 0;
 
   if (events && events.length > 0) {
@@ -152,7 +153,9 @@ export default async function DashboardPage() {
       fetchGuests(supabase, eventIds),
       supabase
         .from("tables")
-        .select("id, event_id, name, capacity")
+        .select(
+          "id, event_id, name, capacity, shape, x, y, width, height, rotation",
+        )
         .in("event_id", eventIds),
     ]);
 
@@ -185,12 +188,7 @@ export default async function DashboardPage() {
       const eventId = String(table.event_id);
 
       const eventTables = tablesByEventId.get(eventId) ?? [];
-      eventTables.push({
-        id: String(table.id),
-        event_id: eventId,
-        name: table.name,
-        capacity: table.capacity,
-      });
+      eventTables.push(normalizeLayoutTable(table));
       tablesByEventId.set(eventId, eventTables);
     }
   }

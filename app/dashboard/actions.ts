@@ -8,6 +8,13 @@ import {
   userOwnsGuest,
   userOwnsTable,
 } from "@/lib/dashboard-events";
+import {
+  DEFAULT_TABLE_CAPACITY,
+  SHAPE_DEFAULTS,
+  defaultPositionForIndex,
+  isTableShape,
+  type TableShape,
+} from "@/lib/seating-layout";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
 export type CreateEventState = {
@@ -98,6 +105,96 @@ export async function createTable(
 
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function createLayoutTable(
+  eventId: string,
+  shape: TableShape,
+): Promise<{ error?: string }> {
+  const user = await requireUser();
+
+  if (!isTableShape(shape)) {
+    return { error: "Invalid table shape." };
+  }
+
+  const parsedEventId = Number(eventId);
+  if (!Number.isInteger(parsedEventId)) {
+    return { error: "Invalid event." };
+  }
+
+  const ownsEvent = await userOwnsEvent(user.id, parsedEventId);
+  if (!ownsEvent) {
+    return { error: "Event not found." };
+  }
+
+  const supabase = await getDashboardClient();
+
+  const { count, error: countError } = await supabase
+    .from("tables")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", parsedEventId);
+
+  if (countError) {
+    return { error: countError.message };
+  }
+
+  const tableIndex = count ?? 0;
+  const { x, y } = defaultPositionForIndex(tableIndex);
+  const { width, height } = SHAPE_DEFAULTS[shape];
+
+  const { error } = await supabase.from("tables").insert({
+    event_id: parsedEventId,
+    name: `Table ${tableIndex + 1}`,
+    capacity: DEFAULT_TABLE_CAPACITY,
+    shape,
+    x,
+    y,
+    width,
+    height,
+    rotation: 0,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
+  return {};
+}
+
+export async function updateTablePositionAction(
+  tableId: string,
+  x: number,
+  y: number,
+): Promise<{ error?: string }> {
+  const user = await requireUser();
+
+  const parsedTableId = Number(tableId);
+  if (!Number.isInteger(parsedTableId)) {
+    return { error: "Invalid table." };
+  }
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return { error: "Invalid position." };
+  }
+
+  const ownsTable = await userOwnsTable(user.id, parsedTableId);
+  if (!ownsTable) {
+    return { error: "Table not found." };
+  }
+
+  const supabase = await getDashboardClient();
+
+  const { error } = await supabase
+    .from("tables")
+    .update({ x, y })
+    .eq("id", parsedTableId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
 }
 
 export async function assignGuestToTableAction(
