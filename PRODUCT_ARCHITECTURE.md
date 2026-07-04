@@ -10,7 +10,7 @@
 
 ### What the platform does
 
-A **white-label / managed** platform for digital wedding and event invitations. The platform owner (you) sells packages, sets up each client manually, and delivers:
+A **white-label / managed** platform for digital wedding and event invitations. The platform owner (you) sells **custom-quoted service tiers**, sets up each client manually after offline payment, and delivers:
 
 - A **public invitation page** (shareable link)
 - An **RSVP form** for guests (no login)
@@ -30,7 +30,7 @@ Clients do not self-register. You control onboarding, billing, and account creat
 
 - Replaces paper invitations + manual RSVP tracking (phone, WhatsApp, spreadsheets)
 - Gives organizers a single place to see who is coming and assign seats
-- Keeps **your** business model simple: sell packages, deliver turnkey setup, no open signup abuse
+- Keeps **your** business model simple: custom quotes via direct contact, turnkey delivery, no open signup abuse
 
 ---
 
@@ -41,7 +41,7 @@ Clients do not self-register. You control onboarding, billing, and account creat
 - Creates Supabase Auth users for paying clients
 - Creates events and assigns `user_id`
 - Sends login credentials + links to client
-- (Later) Manages packages, billing notes, client profiles
+- (Later) Tracks agreed service tier, internal notes, client profiles — **not** public checkout or fixed pricing
 - Does **not** use the public app as a typical “super admin UI” in MVP — work happens in Supabase Dashboard + optional internal admin tools later
 
 ### Client / organizer
@@ -62,30 +62,40 @@ Clients do not self-register. You control onboarding, billing, and account creat
 
 ## 3. Core user flows
 
-### A. Visitor flow (landing → inquiry)
+### A. Visitor flow (landing → custom inquiry)
 
 ```
-Landing (/) → Pricing (/pricing) → Contact / Pay (external: email, Stripe link, form)
-     → You receive inquiry
+Landing (/) → See service tiers (no fixed prices)
+     → Contact you (email, phone, WhatsApp, form)
+     → Direct conversation about design, features and price
+     → Agreement reached manually
+     → Client pays outside the app (bank transfer, invoice, etc.)
+     → You onboard in Supabase (Auth user + event)
+     → Client receives login + public invitation link
 ```
 
 - No signup on the site
-- CTA: “Choose package” / “Contact us” / “Pay now”
-- Package choice stored manually (spreadsheet/CRM) until `packages` table is built
+- No public pricing page or online checkout at this stage
+- CTA: “Contact for offer” / “Request quote” — not “Buy now”
+- Agreed package tier and price tracked manually (CRM, spreadsheet, notes) until internal tooling exists
 
-### B. Admin flow (after client pays)
+### B. Admin flow (after agreement & payment outside app)
 
 ```
-1. Create Auth user in Supabase (Authentication → Users → Add user)
-2. Disable public signup (Auth → Providers → Email → sign ups OFF)
-3. Create event row (name, slug, user_id = client UUID)
-4. Optional: create tables, seed guest list if client provided names
-5. Send client:
+1. Agree with client on tier, design, features and price (offline)
+2. Client pays outside the app (no Stripe/checkout in platform)
+3. Create Auth user in Supabase (Authentication → Users → Add user)
+4. Ensure public signup is disabled (Auth → Providers → Email → sign ups OFF)
+5. Create event row (name, slug, user_id = client UUID, is_published when ready)
+6. Optional: create tables, seed guest list if client provided names
+7. Send client:
    - Login URL: /login
    - Email + temporary password
    - Public invitation URL: /{slug}
-6. Client changes password (optional, via Supabase reset email if enabled)
+8. Client changes password (optional, via Supabase reset email if enabled)
 ```
+
+See [ADMIN_RUNBOOK.md](./ADMIN_RUNBOOK.md) for the full checklist.
 
 ### C. Client login flow
 
@@ -139,9 +149,8 @@ Guest opens /{slug}
 
 | Route | Access | Purpose |
 |-------|--------|---------|
-| `/` | Public | Marketing landing |
-| `/pricing` | Public | 3 packages, CTAs to contact/pay |
-| `/contact` | Public | Optional inquiry form |
+| `/` | Public | Marketing landing — service tiers, **no fixed prices**, contact CTA |
+| `/contact` | Public | Optional inquiry form or contact details (can be section on `/` instead) |
 | `/login` | Public | Login only |
 | `/dashboard` | Auth | Overview: client’s events summary |
 | `/dashboard/events` | Auth | List events (if multi-event clients) |
@@ -149,6 +158,8 @@ Guest opens /{slug}
 | `/dashboard/events/[eventId]/guests` | Auth | Guest list, export (later) |
 | `/dashboard/events/[eventId]/seating` | Auth | Tables + drag-and-drop |
 | `/[slug]` | Public | Public invitation + RSVP |
+
+**Not a priority now:** `/pricing` (no public price list), Stripe, or any in-app payment flow.
 
 **Note:** Today everything lives on `/dashboard` in one page. Splitting into nested routes is a **next refactor**, not required for MVP if single-page dashboard works for clients.
 
@@ -212,19 +223,21 @@ Recommended additions (later):
 
 ### Recommended new tables (not built yet)
 
-#### `packages`
+#### `packages` (internal reference — not public pricing)
 
-Commercial tiers you sell on `/pricing`.
+Service tiers for **your** sales conversations and optional future feature gating. Not displayed with fixed prices on the website at this stage.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid / bigint | PK |
 | `slug` | text | `basic`, `rsvp`, `premium` |
-| `name` | text | Display name |
-| `price_cents` | integer | Optional |
-| `max_guests` | integer | Limit per event |
-| `seating_enabled` | boolean | Premium |
+| `name` | text | Display name (marketing copy) |
+| `max_guests` | integer | Optional limit per event |
+| `seating_enabled` | boolean | Premium tier |
 | `features` | jsonb | Feature flags |
+| `internal_notes` | text | Optional — scope, upsells, custom terms |
+
+Price is agreed **per client offline** — no `price_cents` on public site; optional internal field later if needed for invoicing.
 
 #### `client_profiles` (optional)
 
@@ -331,61 +344,65 @@ packages (1) ──< (N) events [later, optional]
 
 ### Next priority 🔜
 
-1. **Production RLS audit** — replace permissive policies
-2. **Landing page (`/`)** — value prop, package teaser, CTA
-3. **Pricing page (`/pricing`)** — 3 packages, contact/pay links
+1. **Production RLS hardening** — apply production RLS SQL; remove permissive policies
+2. **Marketing landing (`/`)** — value proposition, **service tiers without fixed prices**, contact CTA
+3. **Contact path** — `/contact` page or prominent section on landing (email / WhatsApp / form)
 4. **Remove test routes** — `/test/events`
-5. **Admin onboarding checklist** — internal doc or Notion for manual client setup
+5. **Admin onboarding** — [ADMIN_RUNBOOK.md](./ADMIN_RUNBOOK.md) (done; keep updated)
 6. **Split dashboard routes** — optional refactor to `/dashboard/events/[eventId]/...`
-7. **Assign existing events to clients** — SQL/script for `user_id` backfill
+7. **Assign / publish events** — `user_id` backfill, `is_published = true` when delivering
 8. **Error/empty states** — no events, no guests, full table
+
+**Explicitly not next priority:** public `/pricing` page, Stripe, online checkout, self-serve purchase flow.
 
 ### Later / pro features 📦
 
-- `packages` table + feature flags per client
-- `client_profiles` + CRM notes
+- `packages` table + feature flags per client (internal tier tracking)
+- `client_profiles` + CRM notes (agreed price, payment status offline)
 - Custom invitation themes / templates
 - Email reminders to guests
 - Guest import (CSV)
 - Export guest list / seating PDF
 - Plus-one and dietary fields
-- Multi-event per client with package limits
+- Multi-event per client with tier-based limits
 - Admin panel (internal UI instead of Supabase Dashboard)
-- Stripe integration for payments
+- Public pricing page / online checkout / Stripe (**only if business model changes**)
 - Custom domains per invitation
 - Analytics (page views, RSVP conversion)
 - i18n (HR/EN)
 
 ---
 
-## 9. Package structure (commercial)
+## 9. Service tiers (commercial — custom pricing)
 
-### Package 1 — Basic digital invitation
+Tiers describe **what you offer**, not fixed public prices. Each deal is quoted individually after direct contact.
+
+### Tier 1 — Basic digital invitation
 
 - Public invitation page (`/{slug}`)
 - Event details (names, date, location — when added)
 - Shareable link
 - **No RSVP** or RSVP disabled
-- **Price positioning:** Entry tier
+- **Sales note:** Entry tier; quote based on design complexity
 
-### Package 2 — RSVP
+### Tier 2 — RSVP
 
 - Everything in Basic
 - Guest RSVP (going / not going)
 - Client dashboard: live RSVP counts + guest list
-- Email support for setup
-- **Price positioning:** Core tier (likely best seller)
+- Setup and support included
+- **Sales note:** Core tier; most common starting point
 
-### Package 3 — Premium (RSVP + seating)
+### Tier 3 — Premium (RSVP + seating)
 
 - Everything in RSVP
 - Table management + capacity
 - Drag-and-drop seating plan
-- Higher guest/table limits
+- Higher guest/table limits (as agreed)
 - Priority setup + optional custom styling
-- **Price positioning:** Premium / weddings
+- **Sales note:** Full wedding / large event offering
 
-**Implementation mapping:**
+**Feature matrix (for proposals — not a public price list):**
 
 | Feature | Basic | RSVP | Premium |
 |---------|-------|------|---------|
@@ -394,7 +411,7 @@ packages (1) ──< (N) events [later, optional]
 | Dashboard stats | ❌ | ✅ | ✅ |
 | Seating | ❌ | ❌ | ✅ |
 
-Enforcement later via `packages.seating_enabled`, `max_guests`, and UI hiding.
+**Pricing model:** Agreed manually per client (call, email, invoice). Payment happens **outside the app**. Enforcement of tier limits in product later via `packages.seating_enabled`, `max_guests`, and UI hiding.
 
 ---
 
@@ -408,21 +425,22 @@ Starting from **current state** (auth + dashboard + RSVP + seating working).
 | **2** | `events.user_id` ownership column + insert on create | ✅ Done |
 | **3** | Protect `/dashboard` (middleware + layout) | ✅ Done |
 | **4** | Client-only data filtering (events, guests, tables) | ✅ Done (app); RLS partial |
-| **5** | Admin manual workflow doc + Supabase checklist | 🔜 Next |
+| **5** | Admin manual workflow ([ADMIN_RUNBOOK.md](./ADMIN_RUNBOOK.md)) | ✅ Done |
 | **6** | RLS/security hardening for production | 🔜 Next |
-| **7** | Landing (`/`) + pricing (`/pricing`) pages | 🔜 Planned |
+| **7** | Marketing landing (`/`) + contact CTA — **no public pricing/checkout** | 🔜 Planned |
 | **8** | Deploy (Vercel + env vars + domain) | 🔜 Planned |
 
 ### Step 5 detail — Admin manual workflow
 
-Document for yourself (can live in this repo as `ADMIN_RUNBOOK.md` later):
+See [ADMIN_RUNBOOK.md](./ADMIN_RUNBOOK.md):
 
-1. Receive payment / signed contract  
-2. Create Auth user (Auto Confirm)  
-3. Run SQL or use dashboard to create event with `user_id`  
-4. Test `/login` and `/{slug}`  
-5. Send credentials + links to client  
-6. Optional: set `package_id` when table exists  
+1. Receive inquiry → agree on tier, design, features and **custom price**  
+2. Client pays **outside the app**  
+3. Create Auth user (Auto Confirm)  
+4. Create event with `user_id`; set `is_published` when ready  
+5. Test `/login` and `/{slug}`  
+6. Send credentials + links to client  
+7. Optional: record agreed tier internally when `packages` / CRM exists  
 
 ### Step 6 detail — RLS hardening
 
@@ -433,11 +451,12 @@ Run and verify migrations:
 - Replace anon `using (true)` SELECT on sensitive tables where possible
 - Public RSVP: narrow INSERT policy `WITH CHECK (event_id = ...)` if using RPC, or keep slug-validated server action
 
-### Step 7 detail — Marketing pages
+### Step 7 detail — Marketing (no public pricing)
 
-- Replace default `/` with landing
-- Add `/pricing` with 3 packages → mailto / Calendly / Stripe Payment Link
-- No auth, no database writes
+- Replace default `/` with landing: what you offer, **three service tiers by name/features**, social proof if available
+- Primary CTA: contact for custom offer (email, phone, WhatsApp, or simple `/contact` form)
+- **Do not** build `/pricing` with fixed prices or Stripe checkout at this stage
+- No auth, no database writes on marketing pages
 
 ### Step 8 detail — Deploy
 
@@ -453,7 +472,7 @@ Run and verify migrations:
 
 ### How to build the next features
 
-1. **One feature at a time** — e.g. only pricing page, or only RLS migration, not both in one PR  
+1. **One feature at a time** — e.g. only landing page, or only RLS migration, not both in one PR  
 2. **Small commits** — easy to revert if RSVP/seating breaks  
 3. **Test after each change** — manual checklist:
    - Guest RSVP on `/{slug}` still works
@@ -467,13 +486,12 @@ Run and verify migrations:
 
 ### Suggested next Cursor tasks (in order)
 
-1. Create `ADMIN_RUNBOOK.md` (manual client setup)  
-2. Audit & apply production RLS SQL  
-3. Build `/` landing page  
-4. Build `/pricing` page  
-5. Refactor dashboard into nested routes (optional)  
-6. Add `packages` table + feature gating (when selling tiers in app)  
-7. Deploy to Vercel  
+1. Audit & apply production RLS SQL  
+2. Build `/` marketing landing (tiers + contact CTA, no fixed prices)  
+3. Optional `/contact` page or contact section on landing  
+4. Refactor dashboard into nested routes (optional)  
+5. Add internal `packages` / feature gating (when tier enforcement is needed in app)  
+6. Deploy to Vercel  
 
 ---
 

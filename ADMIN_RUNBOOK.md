@@ -462,4 +462,26 @@ Before onboarding real clients on production:
 
 ---
 
+# Security Notes
+
+## RLS status
+
+Production RLS policies have been applied in Supabase for:
+
+- events
+- guests
+- tables
+
+Verified tests:
+
+- Unauthenticated users cannot access dashboard
+- Client can see only their own event
+- Public RSVP works without login
+- Public guests cannot see guest list
+- Public guests can only insert RSVP
+- Seating drag and drop still updates table_id
+- Multi-client isolation tested successfully
+
+Date applied: 07.04.2026.
+
 *Update this runbook when routes, auth rules, or onboarding steps change.*
