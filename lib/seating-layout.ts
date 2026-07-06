@@ -16,6 +16,10 @@ export type LayoutTable = {
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 560;
 export const DEFAULT_TABLE_CAPACITY = 8;
+export const MIN_TABLE_CAPACITY = 1;
+export const MAX_TABLE_CAPACITY = 30;
+export const MIN_TABLE_SIZE = 60;
+export const MAX_TABLE_SIZE = 400;
 
 export const SHAPE_DEFAULTS: Record<
   TableShape,
@@ -56,6 +60,25 @@ export function layoutTableDragId(eventId: string, tableId: string) {
 export function parseLayoutTableDragId(id: string) {
   const parts = id.split("-");
   return parts[parts.length - 1] ?? "";
+}
+
+export function shapeLabel(shape: TableShape): string {
+  switch (shape) {
+    case "round":
+      return "Round";
+    case "rectangle":
+      return "Rectangular";
+    case "square":
+      return "Square";
+  }
+}
+
+export function clampCapacity(value: number) {
+  return Math.min(MAX_TABLE_CAPACITY, Math.max(MIN_TABLE_CAPACITY, value));
+}
+
+export function clampTableSize(value: number) {
+  return Math.min(MAX_TABLE_SIZE, Math.max(MIN_TABLE_SIZE, value));
 }
 
 export function normalizeLayoutTable(row: {

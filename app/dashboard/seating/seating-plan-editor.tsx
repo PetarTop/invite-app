@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   CANVAS_HEIGHT,
@@ -20,55 +20,50 @@ import {
   type TableShape,
 } from "@/lib/seating-layout";
 
-import { createLayoutTable, updateTablePositionAction } from "../actions";
-import { CanvasTable, StaticCanvasTable } from "./canvas-table";
+import { updateTablePositionAction } from "../actions";
+import { CanvasTable, OverlayCanvasTable, StaticCanvasTable } from "./canvas-table";
+import { CreateTableModal } from "./create-table-modal";
+import { TableSettingsPanel } from "./table-settings-panel";
 
 type SeatingPlanEditorProps = {
   eventId: string;
   tables: LayoutTable[];
 };
 
-function CanvasOverlayTable({ table }: { table: LayoutTable }) {
-  const borderRadius =
-    table.shape === "round" ? "9999px" : table.shape === "square" ? "12px" : "10px";
-
-  return (
-    <div
-      style={{
-        width: table.width,
-        height: table.height,
-      }}
-    >
-      <div
-        className="flex h-full w-full cursor-grabbing flex-col items-center justify-center border-2 border-zinc-400 bg-white px-2 text-center shadow-lg ring-2 ring-zinc-300 dark:border-zinc-500 dark:bg-zinc-950 dark:ring-zinc-600"
-        style={{
-          borderRadius,
-          transform: `rotate(${table.rotation}deg)`,
-        }}
-      >
-        <span className="truncate text-xs font-semibold">{table.name}</span>
-        <span className="text-[10px] text-zinc-500">{table.capacity} seats</span>
-      </div>
-    </div>
-  );
-}
+const ADD_BUTTONS: { shape: TableShape; label: string }[] = [
+  { shape: "round", label: "Add round table" },
+  { shape: "rectangle", label: "Add rectangular table" },
+  { shape: "square", label: "Add square table" },
+];
 
 function SeatingCanvas({
   eventId,
   tables,
-  activeTableId,
+  draggingTableId,
+  selectedTableId,
+  onDeselect,
+  onSelectTable,
 }: {
   eventId: string;
   tables: LayoutTable[];
-  activeTableId: string | null;
+  draggingTableId: string | null;
+  selectedTableId: string | null;
+  onDeselect: () => void;
+  onSelectTable: (tableId: string) => void;
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950 dark:bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)]"
+      className="relative overflow-visible rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950 dark:bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)]"
       style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, maxWidth: "100%" }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onDeselect();
+        }
+      }}
+      role="presentation"
     >
       {tables.length === 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-zinc-500">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-zinc-500">
           No tables yet. Add a round, rectangular, or square table to begin.
         </div>
       ) : (
@@ -77,7 +72,9 @@ function SeatingCanvas({
             key={table.id}
             table={table}
             eventId={eventId}
-            isDragging={activeTableId === table.id}
+            isDragging={draggingTableId === table.id}
+            isSelected={selectedTableId === table.id}
+            onSelect={() => onSelectTable(table.id)}
           />
         ))
       )}
@@ -88,7 +85,7 @@ function SeatingCanvas({
 function StaticSeatingCanvas({ tables }: { tables: LayoutTable[] }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950"
+      className="relative overflow-visible rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950"
       style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, maxWidth: "100%" }}
     >
       {tables.map((table) => (
@@ -98,21 +95,16 @@ function StaticSeatingCanvas({ tables }: { tables: LayoutTable[] }) {
   );
 }
 
-const ADD_BUTTONS: { shape: TableShape; label: string }[] = [
-  { shape: "round", label: "Add round table" },
-  { shape: "rectangle", label: "Add rectangular table" },
-  { shape: "square", label: "Add square table" },
-];
-
 export function SeatingPlanEditor({
   eventId,
   tables: initialTables,
 }: SeatingPlanEditorProps) {
   const [tables, setTables] = useState(initialTables);
-  const [activeTableId, setActiveTableId] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [draggingTableId, setDraggingTableId] = useState<string | null>(null);
+  const [createShape, setCreateShape] = useState<TableShape | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [isAdding, startAddTransition] = useTransition();
   const [, startMoveTransition] = useTransition();
 
   useEffect(() => {
@@ -121,6 +113,12 @@ export function SeatingPlanEditor({
 
   useEffect(() => {
     setTables(initialTables);
+    setSelectedTableId((current) => {
+      if (current && !initialTables.some((table) => table.id === current)) {
+        return null;
+      }
+      return current;
+    });
   }, [initialTables]);
 
   const sensors = useSensors(
@@ -129,35 +127,44 @@ export function SeatingPlanEditor({
     }),
   );
 
-  const activeTable =
-    tables.find((table) => table.id === activeTableId) ?? null;
+  const selectedTable = useMemo(
+    () => tables.find((table) => table.id === selectedTableId) ?? null,
+    [tables, selectedTableId],
+  );
 
-  function handleAddTable(shape: TableShape) {
-    setError(null);
+  const draggingTable =
+    tables.find((table) => table.id === draggingTableId) ?? null;
 
-    startAddTransition(async () => {
-      const result = await createLayoutTable(eventId, shape);
+  const defaultTableName = `Table ${tables.length + 1}`;
 
-      if (result.error) {
-        setError(result.error);
-      }
-    });
+  function handleTableUpdate(tableId: string, patch: Partial<LayoutTable>) {
+    setTables((current) =>
+      current.map((table) =>
+        table.id === tableId ? { ...table, ...patch } : table,
+      ),
+    );
+  }
+
+  function handleTableDelete(tableId: string) {
+    setTables((current) => current.filter((table) => table.id !== tableId));
   }
 
   function handleDragStart(event: DragStartEvent) {
     setError(null);
-    setActiveTableId(parseLayoutTableDragId(String(event.active.id)));
+    const tableId = parseLayoutTableDragId(String(event.active.id));
+    setDraggingTableId(tableId);
+    setSelectedTableId(tableId);
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveTableId(null);
+    const tableId = parseLayoutTableDragId(String(event.active.id));
+    setDraggingTableId(null);
 
-    const { active, delta } = event;
+    const { delta } = event;
     if (!delta.x && !delta.y) {
       return;
     }
 
-    const tableId = parseLayoutTableDragId(String(active.id));
     const table = tables.find((item) => item.id === tableId);
     if (!table) {
       return;
@@ -197,6 +204,12 @@ export function SeatingPlanEditor({
     });
   }
 
+  function handleCanvasClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setSelectedTableId(null);
+    }
+  }
+
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -205,7 +218,7 @@ export function SeatingPlanEditor({
             Seating plan
           </h4>
           <p className="text-xs text-zinc-500">
-            Drag tables to arrange your layout. Guest assignment is below.
+            Click a table to edit it. Drag to move. Guest assignment is below.
           </p>
         </div>
 
@@ -214,11 +227,13 @@ export function SeatingPlanEditor({
             <button
               key={shape}
               type="button"
-              disabled={isAdding}
-              onClick={() => handleAddTable(shape)}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              onClick={() => {
+                setError(null);
+                setCreateShape(shape);
+              }}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
             >
-              {isAdding ? "Adding..." : label}
+              {label}
             </button>
           ))}
         </div>
@@ -230,28 +245,53 @@ export function SeatingPlanEditor({
         </p>
       )}
 
-      <div className="overflow-x-auto">
-        {!isMounted ? (
-          <StaticSeatingCanvas tables={tables} />
-        ) : (
-          <DndContext
-            id={`seating-plan-${eventId}`}
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SeatingCanvas
-              eventId={eventId}
-              tables={tables}
-              activeTableId={activeTableId}
-            />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 overflow-x-auto">
+          {!isMounted ? (
+            <StaticSeatingCanvas tables={tables} />
+          ) : (
+            <DndContext
+              id={`seating-plan-${eventId}`}
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SeatingCanvas
+                eventId={eventId}
+                tables={tables}
+                draggingTableId={draggingTableId}
+                selectedTableId={selectedTableId}
+                onDeselect={() => setSelectedTableId(null)}
+                onSelectTable={setSelectedTableId}
+              />
 
-            <DragOverlay>
-              {activeTable ? <CanvasOverlayTable table={activeTable} /> : null}
-            </DragOverlay>
-          </DndContext>
-        )}
+              <DragOverlay>
+                {draggingTable ? (
+                  <OverlayCanvasTable table={draggingTable} />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </div>
+
+        <TableSettingsPanel
+          table={selectedTable}
+          onUpdate={handleTableUpdate}
+          onDelete={handleTableDelete}
+          onError={setError}
+          onClearSelection={() => setSelectedTableId(null)}
+        />
       </div>
+
+      {createShape && (
+        <CreateTableModal
+          eventId={eventId}
+          shape={createShape}
+          defaultName={defaultTableName}
+          onClose={() => setCreateShape(null)}
+          onError={setError}
+        />
+      )}
     </section>
   );
 }

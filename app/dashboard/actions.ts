@@ -10,6 +10,10 @@ import {
 } from "@/lib/dashboard-events";
 import {
   DEFAULT_TABLE_CAPACITY,
+  MAX_TABLE_CAPACITY,
+  MAX_TABLE_SIZE,
+  MIN_TABLE_CAPACITY,
+  MIN_TABLE_SIZE,
   SHAPE_DEFAULTS,
   defaultPositionForIndex,
   isTableShape,
@@ -109,12 +113,32 @@ export async function createTable(
 
 export async function createLayoutTable(
   eventId: string,
-  shape: TableShape,
+  input: {
+    shape: TableShape;
+    name: string;
+    capacity: number;
+  },
 ): Promise<{ error?: string }> {
   const user = await requireUser();
 
+  const { shape, name, capacity } = input;
+
   if (!isTableShape(shape)) {
     return { error: "Invalid table shape." };
+  }
+
+  if (!name) {
+    return { error: "Table name is required." };
+  }
+
+  if (
+    !Number.isInteger(capacity) ||
+    capacity < MIN_TABLE_CAPACITY ||
+    capacity > MAX_TABLE_CAPACITY
+  ) {
+    return {
+      error: `Capacity must be between ${MIN_TABLE_CAPACITY} and ${MAX_TABLE_CAPACITY}.`,
+    };
   }
 
   const parsedEventId = Number(eventId);
@@ -144,8 +168,8 @@ export async function createLayoutTable(
 
   const { error } = await supabase.from("tables").insert({
     event_id: parsedEventId,
-    name: `Table ${tableIndex + 1}`,
-    capacity: DEFAULT_TABLE_CAPACITY,
+    name,
+    capacity,
     shape,
     x,
     y,
@@ -194,6 +218,121 @@ export async function updateTablePositionAction(
     return { error: error.message };
   }
 
+  return {};
+}
+
+export type TableSettingsInput = {
+  name: string;
+  capacity: number;
+  width: number;
+  height: number;
+  rotation: number;
+};
+
+export async function updateTableSettingsAction(
+  tableId: string,
+  settings: TableSettingsInput,
+): Promise<{ error?: string }> {
+  const user = await requireUser();
+
+  const parsedTableId = Number(tableId);
+  if (!Number.isInteger(parsedTableId)) {
+    return { error: "Invalid table." };
+  }
+
+  const name = settings.name.trim();
+  if (!name) {
+    return { error: "Table name is required." };
+  }
+
+  const { capacity, width, height, rotation } = settings;
+
+  if (
+    !Number.isInteger(capacity) ||
+    capacity < MIN_TABLE_CAPACITY ||
+    capacity > MAX_TABLE_CAPACITY
+  ) {
+    return {
+      error: `Capacity must be between ${MIN_TABLE_CAPACITY} and ${MAX_TABLE_CAPACITY}.`,
+    };
+  }
+
+  if (
+    !Number.isFinite(width) ||
+    width < MIN_TABLE_SIZE ||
+    width > MAX_TABLE_SIZE
+  ) {
+    return {
+      error: `Width must be between ${MIN_TABLE_SIZE} and ${MAX_TABLE_SIZE}.`,
+    };
+  }
+
+  if (
+    !Number.isFinite(height) ||
+    height < MIN_TABLE_SIZE ||
+    height > MAX_TABLE_SIZE
+  ) {
+    return {
+      error: `Height must be between ${MIN_TABLE_SIZE} and ${MAX_TABLE_SIZE}.`,
+    };
+  }
+
+  if (!Number.isFinite(rotation)) {
+    return { error: "Invalid rotation." };
+  }
+
+  const ownsTable = await userOwnsTable(user.id, parsedTableId);
+  if (!ownsTable) {
+    return { error: "Table not found." };
+  }
+
+  const supabase = await getDashboardClient();
+
+  const { error } = await supabase
+    .from("tables")
+    .update({
+      name,
+      capacity,
+      width,
+      height,
+      rotation,
+    })
+    .eq("id", parsedTableId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function deleteTableAction(
+  tableId: string,
+): Promise<{ error?: string }> {
+  const user = await requireUser();
+
+  const parsedTableId = Number(tableId);
+  if (!Number.isInteger(parsedTableId)) {
+    return { error: "Invalid table." };
+  }
+
+  const ownsTable = await userOwnsTable(user.id, parsedTableId);
+  if (!ownsTable) {
+    return { error: "Table not found." };
+  }
+
+  const supabase = await getDashboardClient();
+
+  const { error } = await supabase
+    .from("tables")
+    .delete()
+    .eq("id", parsedTableId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard");
   return {};
 }
 
