@@ -376,7 +376,7 @@ export async function assignGuestToTableAction(
 
   const { error } = await supabase
     .from("guests")
-    .update({ table_id: parsedTableId })
+    .update({ table_id: parsedTableId, seat_index: null })
     .eq("id", parsedGuestId);
 
   if (error) {
@@ -384,6 +384,116 @@ export async function assignGuestToTableAction(
   }
 
   revalidatePath("/dashboard");
+  return {};
+}
+
+export async function assignGuestToSeatAction(
+  guestId: string,
+  tableId: string | null,
+  seatIndex: number | null,
+): Promise<{ error?: string }> {
+  const user = await requireUser();
+
+  const parsedGuestId = Number(guestId);
+  if (!Number.isInteger(parsedGuestId)) {
+    return { error: "Invalid guest." };
+  }
+
+  const parsedTableId =
+    tableId === null || tableId === "" ? null : Number(tableId);
+
+  if (parsedTableId !== null && !Number.isInteger(parsedTableId)) {
+    return { error: "Invalid table." };
+  }
+
+  if (seatIndex !== null && !Number.isInteger(seatIndex)) {
+    return { error: "Invalid seat." };
+  }
+
+  if (
+    (parsedTableId === null && seatIndex !== null) ||
+    (parsedTableId !== null && seatIndex === null)
+  ) {
+    return { error: "Table and seat must be set together." };
+  }
+
+  const guestOwnership = await userOwnsGuest(user.id, parsedGuestId);
+  if (!guestOwnership.owned || guestOwnership.eventId === null) {
+    return { error: "Guest not found." };
+  }
+
+  const supabase = await getDashboardClient();
+
+  if (parsedTableId === null) {
+    const { error } = await supabase
+      .from("guests")
+      .update({ table_id: null, seat_index: null })
+      .eq("id", parsedGuestId);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {};
+  }
+
+  const ownsTable = await userOwnsTable(
+    user.id,
+    parsedTableId,
+    guestOwnership.eventId,
+  );
+
+  if (!ownsTable) {
+    return { error: "Table not found." };
+  }
+
+  const { data: tableRow, error: tableError } = await supabase
+    .from("tables")
+    .select("capacity")
+    .eq("id", parsedTableId)
+    .maybeSingle();
+
+  if (tableError) {
+    return { error: tableError.message };
+  }
+
+  if (!tableRow) {
+    return { error: "Table not found." };
+  }
+
+  if (seatIndex! < 0 || seatIndex! >= tableRow.capacity) {
+    return { error: "Seat is out of range for this table." };
+  }
+
+  const { data: occupant, error: occupantError } = await supabase
+    .from("guests")
+    .select("id")
+    .eq("event_id", guestOwnership.eventId)
+    .eq("table_id", parsedTableId)
+    .eq("seat_index", seatIndex)
+    .neq("id", parsedGuestId)
+    .maybeSingle();
+
+  if (occupantError) {
+    return { error: occupantError.message };
+  }
+
+  if (occupant) {
+    return { error: "This seat is already taken." };
+  }
+
+  const { error } = await supabase
+    .from("guests")
+    .update({
+      table_id: parsedTableId,
+      seat_index: seatIndex,
+    })
+    .eq("id", parsedGuestId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
   return {};
 }
 

@@ -80,7 +80,8 @@ type GuestRow = {
   event_id: string | number;
   name: string;
   status: string | null;
-  table_id?: string | null;
+  table_id?: string | number | null;
+  seat_index?: number | null;
 };
 
 async function fetchGuests(
@@ -93,7 +94,7 @@ async function fetchGuests(
 
   const withTableId = await supabase
     .from("guests")
-    .select("id, event_id, name, status, table_id")
+    .select("id, event_id, name, status, table_id, seat_index")
     .in("event_id", eventIds);
 
   if (
@@ -109,9 +110,29 @@ async function fetchGuests(
       data: withoutTableId.data?.map((guest) => ({
         ...guest,
         table_id: null,
+        seat_index: null,
       })),
       error: withoutTableId.error,
       missingTableIdColumn: true,
+    };
+  }
+
+  if (
+    withTableId.error?.message.includes("seat_index") &&
+    withTableId.error.message.includes("does not exist")
+  ) {
+    const withoutSeatIndex = await supabase
+      .from("guests")
+      .select("id, event_id, name, status, table_id")
+      .in("event_id", eventIds);
+
+    return {
+      data: withoutSeatIndex.data?.map((guest) => ({
+        ...guest,
+        seat_index: null,
+      })),
+      error: withoutSeatIndex.error,
+      missingTableIdColumn: false,
     };
   }
 
@@ -179,7 +200,9 @@ export default async function DashboardPage() {
         id: String(guest.id),
         event_id: eventId,
         name: guest.name,
-        table_id: guest.table_id ? String(guest.table_id) : null,
+        table_id: guest.table_id != null ? String(guest.table_id) : null,
+        seat_index:
+          guest.seat_index != null ? Number(guest.seat_index) : null,
       });
       goingGuestsByEventId.set(eventId, goingGuests);
     }

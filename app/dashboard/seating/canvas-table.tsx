@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
+import type { GoingGuest } from "@/lib/seating-guests";
 import { layoutTableDragId, type LayoutTable } from "@/lib/seating-layout";
 
 import { TableWithChairs } from "./table-with-chairs";
@@ -11,9 +12,12 @@ import { TableWithChairs } from "./table-with-chairs";
 type CanvasTableProps = {
   table: LayoutTable;
   eventId: string;
+  guestsBySeat: Map<string, GoingGuest>;
   isDragging?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  onUnassignGuest?: (guestId: string) => void;
+  highlightedDropId?: string | null;
 };
 
 function canvasTableStyle(
@@ -28,57 +32,81 @@ function canvasTableStyle(
     height: table.height,
     transform: options?.transform,
     zIndex: options?.zIndex,
+    pointerEvents: "none",
   };
 }
 
 export function CanvasTable({
   table,
   eventId,
+  guestsBySeat,
   isDragging = false,
   isSelected = false,
   onSelect,
+  onUnassignGuest,
+  highlightedDropId,
 }: CanvasTableProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: layoutTableDragId(eventId, table.id),
-    data: { table },
+    data: { type: "table", table },
   });
 
   return (
     <div
-      ref={setNodeRef}
       style={canvasTableStyle(table, {
         transform: transform ? CSS.Translate.toString(transform) : undefined,
-        zIndex: isDragging || isSelected ? 20 : 1,
+        zIndex: isDragging ? 40 : isSelected ? 2 : 1,
       })}
-      className="cursor-grab active:cursor-grabbing"
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelect?.();
-      }}
-      {...listeners}
-      {...attributes}
     >
       <TableWithChairs
         table={table}
+        eventId={eventId}
+        guestsBySeat={guestsBySeat}
         isDragging={isDragging}
         isSelected={isSelected}
+        tableDragHandle={{ listeners, attributes, setNodeRef }}
+        onSelectTable={onSelect}
+        onUnassignGuest={onUnassignGuest}
+        highlightedDropId={highlightedDropId}
       />
     </div>
   );
 }
 
-export function StaticCanvasTable({ table }: { table: LayoutTable }) {
+export function StaticCanvasTable({
+  table,
+  eventId,
+  guestsBySeat,
+}: {
+  table: LayoutTable;
+  eventId: string;
+  guestsBySeat: Map<string, GoingGuest>;
+}) {
   return (
     <div style={canvasTableStyle(table)}>
-      <TableWithChairs table={table} />
+      <TableWithChairs
+        table={table}
+        eventId={eventId}
+        guestsBySeat={guestsBySeat}
+      />
     </div>
   );
 }
 
-export function OverlayCanvasTable({ table }: { table: LayoutTable }) {
+export function OverlayCanvasTable({
+  table,
+  eventId,
+  guestsBySeat,
+}: {
+  table: LayoutTable;
+  eventId: string;
+  guestsBySeat: Map<string, GoingGuest>;
+}) {
   return (
     <TableWithChairs
       table={table}
+      eventId={eventId}
+      guestsBySeat={guestsBySeat}
       isDragging
       className="cursor-grabbing shadow-lg"
     />

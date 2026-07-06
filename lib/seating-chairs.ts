@@ -6,8 +6,12 @@ export type ChairPosition = {
   rotation: number;
 };
 
-export const CHAIR_WIDTH = 14;
-export const CHAIR_HEIGHT = 10;
+export const CHAIR_VISUAL_SIZE = 22;
+export const CHAIR_HITBOX_SIZE = 40;
+/** @deprecated Use CHAIR_VISUAL_SIZE for layout math */
+export const CHAIR_WIDTH = CHAIR_VISUAL_SIZE;
+/** @deprecated Use CHAIR_VISUAL_SIZE for layout math */
+export const CHAIR_HEIGHT = CHAIR_VISUAL_SIZE;
 export const CHAIR_GAP = 10;
 
 function allocateCounts(capacity: number, sideLengths: number[]): number[] {
