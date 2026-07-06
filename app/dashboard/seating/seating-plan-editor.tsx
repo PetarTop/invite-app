@@ -43,6 +43,15 @@ import {
 import { CanvasTable, OverlayCanvasTable, StaticCanvasTable } from "./canvas-table";
 import { CreateTableModal } from "./create-table-modal";
 import { GuestDragOverlay, GuestListPanel } from "./guest-list-panel";
+import {
+  seatingBtnPrimary,
+  seatingBtnSecondary,
+  seatingCanvas,
+  seatingCanvasEmpty,
+  seatingPanel,
+  seatingPanelHeader,
+  seatingPanelSubtext,
+} from "./seating-ui";
 import { TableSettingsPanel } from "./table-settings-panel";
 
 type SeatingPlanEditorProps = {
@@ -52,10 +61,14 @@ type SeatingPlanEditorProps = {
   onGuestsChange: (guests: GoingGuest[]) => void;
 };
 
-const ADD_BUTTONS: { shape: TableShape; label: string }[] = [
-  { shape: "round", label: "Add round table" },
-  { shape: "rectangle", label: "Add rectangular table" },
-  { shape: "square", label: "Add square table" },
+const ADD_BUTTONS: {
+  shape: TableShape;
+  label: string;
+  shortLabel: string;
+}[] = [
+  { shape: "round", label: "Round table", shortLabel: "Round" },
+  { shape: "rectangle", label: "Rectangular table", shortLabel: "Rectangle" },
+  { shape: "square", label: "Square table", shortLabel: "Square" },
 ];
 
 function SeatingCanvas({
@@ -81,7 +94,7 @@ function SeatingCanvas({
 }) {
   return (
     <div
-      className="relative overflow-visible rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950 dark:bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)]"
+      className={seatingCanvas}
       style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, maxWidth: "100%" }}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -91,8 +104,27 @@ function SeatingCanvas({
       role="presentation"
     >
       {tables.length === 0 ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-zinc-500">
-          No tables yet. Add a round, rectangular, or square table to begin.
+        <div className={seatingCanvasEmpty}>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/80 text-zinc-600">
+            <svg
+              className="h-7 w-7"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4.5v15m7.5-7.5h-15"
+              />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-zinc-400">Your floor plan is empty</p>
+          <p className="max-w-xs text-xs leading-relaxed text-zinc-600">
+            Add a table above to start arranging seats for your event.
+          </p>
         </div>
       ) : (
         tables.map((table) => (
@@ -115,18 +147,18 @@ function SeatingCanvas({
 
 function StaticGuestList({ guests }: { guests: GoingGuest[] }) {
   return (
-    <aside className="w-full shrink-0 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:w-52">
-      <h4 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-        Unassigned guests
-      </h4>
-      <div className="mt-3 flex min-h-32 flex-col gap-2">
+    <aside className={`w-full shrink-0 lg:w-56 xl:w-60 ${seatingPanel}`}>
+      <h4 className={seatingPanelHeader}>Guests</h4>
+      <div className="mt-3 flex min-h-36 flex-col gap-2 rounded-xl border border-dashed border-zinc-700/60 bg-zinc-950/40 p-2.5">
         {guests.length === 0 ? (
-          <p className="text-xs text-zinc-400">All going guests are seated.</p>
+          <p className="px-2 py-6 text-center text-xs text-zinc-500">
+            Everyone is seated.
+          </p>
         ) : (
           guests.map((guest) => (
             <div
               key={guest.id}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              className="rounded-lg border border-zinc-700/70 bg-zinc-800/50 px-3 py-2.5 text-sm text-zinc-100"
             >
               {guest.name}
             </div>
@@ -148,7 +180,7 @@ function StaticSeatingCanvas({
 }) {
   return (
     <div
-      className="relative overflow-visible rounded-xl border border-zinc-200 bg-[linear-gradient(to_right,#f4f4f5_1px,transparent_1px),linear-gradient(to_bottom,#f4f4f5_1px,transparent_1px)] bg-[size:40px_40px] dark:border-zinc-800 dark:bg-zinc-950"
+      className={seatingCanvas}
       style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, maxWidth: "100%" }}
     >
       {tables.map((table) => (
@@ -529,19 +561,19 @@ export function SeatingPlanEditor({
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <section className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h4 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          <h4 className="text-base font-semibold tracking-tight text-zinc-100">
             Seating plan
           </h4>
-          <p className="text-xs text-zinc-500">
-            Drag guests onto chairs. Click a table to edit it.
+          <p className={`mt-1 ${seatingPanelSubtext}`}>
+            Drag guests to chairs · Click a table to edit · Drag tables to reposition
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {ADD_BUTTONS.map(({ shape, label }) => (
+          {ADD_BUTTONS.map(({ shape, label, shortLabel }, index) => (
             <button
               key={shape}
               type="button"
@@ -549,9 +581,13 @@ export function SeatingPlanEditor({
                 setError(null);
                 setCreateShape(shape);
               }}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              className={
+                index === 0 ? seatingBtnPrimary : seatingBtnSecondary
+              }
+              title={`Add ${label.toLowerCase()}`}
             >
-              {label}
+              <span className="hidden sm:inline">Add </span>
+              {shortLabel}
             </button>
           ))}
         </div>
@@ -565,7 +601,10 @@ export function SeatingPlanEditor({
       )}
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p
+          className="rounded-xl border border-red-900/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300"
+          role="alert"
+        >
           {error}
         </p>
       )}
@@ -574,7 +613,7 @@ export function SeatingPlanEditor({
         {!isMounted ? (
           <div className="flex min-w-0 flex-1 flex-col gap-4 xl:flex-row xl:items-start">
             <StaticGuestList guests={unassignedGuests} />
-            <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="min-w-0 flex-1 overflow-x-auto rounded-2xl p-1">
               <StaticSeatingCanvas
                 eventId={eventId}
                 tables={tables}
@@ -594,7 +633,7 @@ export function SeatingPlanEditor({
             <div className="flex min-w-0 flex-1 flex-col gap-4 xl:flex-row xl:items-start">
               <GuestListPanel eventId={eventId} guests={unassignedGuests} />
 
-              <div className="min-w-0 flex-1 overflow-x-auto">
+              <div className="min-w-0 flex-1 overflow-x-auto rounded-2xl p-1">
                 <SeatingCanvas
                   eventId={eventId}
                   tables={tables}

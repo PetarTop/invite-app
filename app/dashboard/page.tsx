@@ -1,13 +1,12 @@
 import {
   calculateRsvpStats,
   groupGuestsByEventId,
-  isGoingGuest,
 } from "@/lib/rsvp-stats";
 import { requireUser } from "@/lib/auth";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
 import { CreateEventForm } from "./create-event-form";
-import { EventSeating, type GoingGuest } from "./event-seating";
+import { OpenSeatingPlannerLink } from "./open-seating-planner-link";
 import { SignOutButton } from "./sign-out-button";
 import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
 
@@ -163,7 +162,6 @@ export default async function DashboardPage() {
   let tablesError: { message: string } | null = null;
   let missingTableIdColumn = false;
   let guestsByEventId = new Map<string, { status: string | null }[]>();
-  let goingGuestsByEventId = new Map<string, GoingGuest[]>();
   let tablesByEventId = new Map<string, LayoutTable[]>();
   let totalGuests = 0;
 
@@ -188,24 +186,6 @@ export default async function DashboardPage() {
 
     totalGuests = matchingGuests.length;
     guestsByEventId = groupGuestsByEventId(matchingGuests);
-
-    for (const guest of matchingGuests as GuestRow[]) {
-      if (!isGoingGuest(guest.status)) {
-        continue;
-      }
-
-      const eventId = String(guest.event_id);
-      const goingGuests = goingGuestsByEventId.get(eventId) ?? [];
-      goingGuests.push({
-        id: String(guest.id),
-        event_id: eventId,
-        name: guest.name,
-        table_id: guest.table_id != null ? String(guest.table_id) : null,
-        seat_index:
-          guest.seat_index != null ? Number(guest.seat_index) : null,
-      });
-      goingGuestsByEventId.set(eventId, goingGuests);
-    }
 
     for (const table of tablesResult.data ?? []) {
       const eventId = String(table.event_id);
@@ -320,10 +300,10 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <EventSeating
+                  <OpenSeatingPlannerLink
                     eventId={eventId}
-                    tables={tablesByEventId.get(eventId) ?? []}
-                    goingGuests={goingGuestsByEventId.get(eventId) ?? []}
+                    goingCount={stats.going}
+                    tableCount={(tablesByEventId.get(eventId) ?? []).length}
                   />
                 </li>
               );

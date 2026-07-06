@@ -12,6 +12,14 @@ import {
 } from "@/lib/seating-layout";
 
 import { deleteTableAction, updateTableSettingsAction } from "../actions";
+import {
+  seatingBtnDanger,
+  seatingInput,
+  seatingLabel,
+  seatingPanel,
+  seatingPanelHeader,
+  seatingPanelSubtext,
+} from "./seating-ui";
 
 type TableSettingsPanelProps = {
   table: LayoutTable | null;
@@ -19,6 +27,8 @@ type TableSettingsPanelProps = {
   onDelete: (tableId: string) => void;
   onError: (message: string) => void;
   onClearSelection: () => void;
+  onSaveStateChange?: (status: "idle" | "saving" | "saved") => void;
+  variant?: "panel" | "embedded";
 };
 
 export function TableSettingsPanel({
@@ -27,6 +37,8 @@ export function TableSettingsPanel({
   onDelete,
   onError,
   onClearSelection,
+  onSaveStateChange,
+  variant = "panel",
 }: TableSettingsPanelProps) {
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
@@ -62,10 +74,41 @@ export function TableSettingsPanel({
     };
   }, []);
 
+  useEffect(() => {
+    onSaveStateChange?.(saveState);
+  }, [saveState, onSaveStateChange]);
+
   if (!table) {
+    if (variant === "embedded") {
+      return null;
+    }
+
     return (
-      <aside className="w-full shrink-0 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900/50 lg:w-64">
-        Click a table on the canvas to edit its settings.
+      <aside
+        className={`flex w-full shrink-0 flex-col items-center justify-center gap-3 border-dashed py-10 text-center lg:w-64 xl:w-72 ${seatingPanel}`}
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800/80 text-zinc-500">
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+            />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-zinc-400">No table selected</p>
+          <p className={`mt-1 max-w-[200px] ${seatingPanelSubtext}`}>
+            Click a table on the canvas to edit its name, capacity, and layout.
+          </p>
+        </div>
       </aside>
     );
   }
@@ -149,28 +192,33 @@ export function TableSettingsPanel({
   }
 
   return (
-    <aside className="w-full shrink-0 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:w-64">
-      <div className="mb-4 flex items-start justify-between gap-2">
-        <div>
-          <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Table settings
-          </h4>
-          <p className="text-xs text-zinc-500">{shapeLabel(table.shape)}</p>
-        </div>
-        <span className="text-xs text-zinc-400">
-          {saveState === "saving"
-            ? "Saving..."
-            : saveState === "saved"
-              ? "Saved"
-              : ""}
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Name
+    <div className={variant === "panel" ? `w-full shrink-0 lg:w-64 xl:w-72 ${seatingPanel}` : ""}>
+      {variant === "panel" && (
+        <div className="mb-5 flex items-start justify-between gap-3 border-b border-zinc-800/80 pb-4">
+          <div className="min-w-0">
+            <h4 className={seatingPanelHeader}>Table settings</h4>
+            <p className={`mt-0.5 truncate ${seatingPanelSubtext}`}>
+              {table.name} · {shapeLabel(table.shape)}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 text-[10px] font-medium uppercase tracking-wide transition-opacity ${
+              saveState === "idle" ? "opacity-0" : "text-amber-400/80"
+            }`}
+            aria-live="polite"
+          >
+            {saveState === "saving"
+              ? "Saving…"
+              : saveState === "saved"
+                ? "Saved"
+                : ""}
           </span>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className={seatingLabel}>Name</span>
           <input
             type="text"
             value={name}
@@ -178,14 +226,12 @@ export function TableSettingsPanel({
               setName(event.target.value);
               applyPatch({ name: event.target.value });
             }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
+            className={seatingInput}
           />
         </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Capacity
-          </span>
+        <label className="flex flex-col gap-1.5">
+          <span className={seatingLabel}>Capacity</span>
           <input
             type="number"
             min={MIN_TABLE_CAPACITY}
@@ -202,62 +248,58 @@ export function TableSettingsPanel({
                 applyPatch({ capacity: parsed });
               }
             }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
+            className={seatingInput}
           />
         </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Width
-          </span>
-          <input
-            type="number"
-            min={MIN_TABLE_SIZE}
-            max={MAX_TABLE_SIZE}
-            value={width}
-            onChange={(event) => {
-              setWidth(event.target.value);
-              const parsed = Number(event.target.value);
-              if (
-                Number.isFinite(parsed) &&
-                parsed >= MIN_TABLE_SIZE &&
-                parsed <= MAX_TABLE_SIZE
-              ) {
-                applyPatch({ width: parsed });
-              }
-            }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={seatingLabel}>Width</span>
+            <input
+              type="number"
+              min={MIN_TABLE_SIZE}
+              max={MAX_TABLE_SIZE}
+              value={width}
+              onChange={(event) => {
+                setWidth(event.target.value);
+                const parsed = Number(event.target.value);
+                if (
+                  Number.isFinite(parsed) &&
+                  parsed >= MIN_TABLE_SIZE &&
+                  parsed <= MAX_TABLE_SIZE
+                ) {
+                  applyPatch({ width: parsed });
+                }
+              }}
+              className={seatingInput}
+            />
+          </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Height
-          </span>
-          <input
-            type="number"
-            min={MIN_TABLE_SIZE}
-            max={MAX_TABLE_SIZE}
-            value={height}
-            onChange={(event) => {
-              setHeight(event.target.value);
-              const parsed = Number(event.target.value);
-              if (
-                Number.isFinite(parsed) &&
-                parsed >= MIN_TABLE_SIZE &&
-                parsed <= MAX_TABLE_SIZE
-              ) {
-                applyPatch({ height: parsed });
-              }
-            }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
-          />
-        </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={seatingLabel}>Height</span>
+            <input
+              type="number"
+              min={MIN_TABLE_SIZE}
+              max={MAX_TABLE_SIZE}
+              value={height}
+              onChange={(event) => {
+                setHeight(event.target.value);
+                const parsed = Number(event.target.value);
+                if (
+                  Number.isFinite(parsed) &&
+                  parsed >= MIN_TABLE_SIZE &&
+                  parsed <= MAX_TABLE_SIZE
+                ) {
+                  applyPatch({ height: parsed });
+                }
+              }}
+              className={seatingInput}
+            />
+          </label>
+        </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Rotation (°)
-          </span>
+        <label className="flex flex-col gap-1.5">
+          <span className={seatingLabel}>Rotation (°)</span>
           <input
             type="number"
             value={rotation}
@@ -268,7 +310,7 @@ export function TableSettingsPanel({
                 applyPatch({ rotation: parsed });
               }
             }}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
+            className={seatingInput}
           />
         </label>
 
@@ -276,11 +318,11 @@ export function TableSettingsPanel({
           type="button"
           onClick={handleDelete}
           disabled={isDeleting}
-          className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900"
+          className={seatingBtnDanger}
         >
-          {isDeleting ? "Deleting..." : "Delete table"}
+          {isDeleting ? "Deleting…" : "Delete table"}
         </button>
       </div>
-    </aside>
+    </div>
   );
 }

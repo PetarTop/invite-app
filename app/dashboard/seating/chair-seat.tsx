@@ -44,13 +44,14 @@ function ChairTooltip({
 }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-50 w-max max-w-[140px] rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-left opacity-0 shadow-md transition-opacity group-hover/chair:opacity-100 dark:border-zinc-700 dark:bg-zinc-900"
+      className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-50 w-max max-w-[160px] rounded-lg border border-zinc-700/80 bg-zinc-900/95 px-2.5 py-2 text-left opacity-0 shadow-lg shadow-black/40 backdrop-blur-sm transition-all duration-200 group-hover/chair:opacity-100"
       style={{ transform: `translateX(-50%) rotate(${-rotation}deg)` }}
+      role="tooltip"
     >
-      <p className="truncate text-[11px] font-medium text-zinc-900 dark:text-zinc-100">
+      <p className="truncate text-[11px] font-semibold text-zinc-100">
         {guestName}
       </p>
-      <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+      <p className="mt-0.5 text-[10px] text-zinc-400">
         {tableName} · Seat {seatNumber}
       </p>
     </div>
@@ -64,13 +65,24 @@ function EmptyChairVisual({ isHighlighted }: { isHighlighted: boolean }) {
       style={{ width: CHAIR_HITBOX_SIZE, height: CHAIR_HITBOX_SIZE }}
     >
       <div
-        className={`rounded-full border-2 border-dashed transition-all ${
+        className={`relative rounded-full transition-all duration-200 ${
           isHighlighted
-            ? "scale-110 border-emerald-500 bg-emerald-200/90 shadow-md ring-2 ring-emerald-400 dark:border-emerald-400 dark:bg-emerald-900/80 dark:ring-emerald-500"
-            : "border-zinc-300/80 bg-zinc-100/60 dark:border-zinc-600/80 dark:bg-zinc-800/40"
+            ? "scale-110 shadow-lg shadow-emerald-500/30"
+            : "group-hover/chair:scale-105 group-hover/chair:border-zinc-400/80"
         }`}
         style={{ width: CHAIR_VISUAL_SIZE, height: CHAIR_VISUAL_SIZE }}
-      />
+      >
+        <div
+          className={`absolute inset-0 rounded-full border-2 transition-all duration-200 ${
+            isHighlighted
+              ? "border-emerald-400 bg-emerald-500/25 ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-zinc-950"
+              : "border-dashed border-zinc-600/70 bg-zinc-800/50 group-hover/chair:border-zinc-500 group-hover/chair:bg-zinc-700/50"
+          }`}
+        />
+        {isHighlighted && (
+          <div className="absolute inset-0 animate-pulse rounded-full bg-emerald-400/20" />
+        )}
+      </div>
     </div>
   );
 }
@@ -113,9 +125,10 @@ function EmptyChairDrop({
   return (
     <div
       ref={setNodeRef}
-      className="pointer-events-auto absolute z-30"
+      className="group/chair pointer-events-auto absolute z-30 cursor-pointer"
       style={chairHitboxStyle(position)}
       data-seat-debug={dropId}
+      aria-label={`Empty seat ${seatNumber} at ${tableName}`}
     >
       <EmptyChairVisual isHighlighted={isHighlighted} />
     </div>
@@ -170,7 +183,7 @@ function OccupiedChair({
   return (
     <div
       ref={setNodeRef}
-      className="pointer-events-auto absolute z-30"
+      className="group/chair pointer-events-auto absolute z-30"
       style={{
         ...chairHitboxStyle(position),
         ...dragStyle,
@@ -187,11 +200,14 @@ function OccupiedChair({
             event.stopPropagation();
             setMenuOpen((open) => !open);
           }}
-          className={`flex cursor-grab items-center justify-center rounded-full border-2 text-[9px] font-semibold tracking-wide transition-all active:cursor-grabbing ${
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label={`${guest.name}, seat ${seatNumber} at ${tableName}`}
+          className={`flex cursor-grab items-center justify-center rounded-full border text-[10px] font-bold tracking-tight transition-all duration-200 active:cursor-grabbing ${
             menuOpen
-              ? "border-amber-500 bg-amber-100 text-amber-900 ring-2 ring-amber-400/50 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100"
-              : "border-amber-600/80 bg-amber-500 text-white shadow-sm hover:scale-105 hover:border-amber-700 hover:bg-amber-600 dark:border-amber-500/80 dark:bg-amber-600 dark:hover:bg-amber-500"
-          } ${isDragging ? "opacity-50" : ""}`}
+              ? "scale-105 border-amber-300 bg-gradient-to-br from-amber-300 to-amber-500 text-zinc-950 shadow-lg shadow-amber-500/40 ring-2 ring-amber-300/60"
+              : "border-amber-400/50 bg-gradient-to-br from-amber-400 to-amber-600 text-zinc-950 shadow-md shadow-amber-950/50 hover:scale-105 hover:from-amber-300 hover:to-amber-500 hover:shadow-lg hover:shadow-amber-500/30"
+          } ${isDragging ? "opacity-40" : ""}`}
           style={{ width: CHAIR_VISUAL_SIZE, height: CHAIR_VISUAL_SIZE }}
           {...listeners}
           {...attributes}
@@ -210,19 +226,21 @@ function OccupiedChair({
 
         {menuOpen && (
           <div
-            className="absolute bottom-[calc(100%+6px)] left-1/2 z-50 w-max rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            className="absolute bottom-[calc(100%+8px)] left-1/2 z-50 w-max rounded-lg border border-zinc-700/80 bg-zinc-900/95 p-1 shadow-xl shadow-black/40 backdrop-blur-sm"
             style={{
               transform: `translateX(-50%) rotate(${-position.rotation}deg)`,
             }}
+            role="menu"
           >
             <button
               type="button"
+              role="menuitem"
               onClick={(event) => {
                 event.stopPropagation();
                 setMenuOpen(false);
                 onUnassignGuest?.(guest.id);
               }}
-              className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950"
+              className="whitespace-nowrap rounded-md px-3 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-950/60"
             >
               Remove from seat
             </button>

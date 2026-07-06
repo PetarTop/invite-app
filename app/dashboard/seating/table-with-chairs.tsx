@@ -29,6 +29,22 @@ type TableWithChairsProps = {
   highlightedDropId?: string | null;
 };
 
+function tableShapeStyles(table: LayoutTable) {
+  const borderRadius =
+    table.shape === "round"
+      ? "9999px"
+      : table.shape === "square"
+        ? "14px"
+        : "12px";
+
+  const surfaceGradient =
+    table.shape === "round"
+      ? "bg-[radial-gradient(ellipse_at_center,_#3f3f46_0%,_#27272a_55%,_#18181b_100%)]"
+      : "bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-900";
+
+  return { borderRadius, surfaceGradient };
+}
+
 function TableSurface({
   table,
   isDragging,
@@ -44,22 +60,19 @@ function TableSurface({
   tableDragHandle?: TableWithChairsProps["tableDragHandle"];
   onSelectTable?: () => void;
 }) {
-  const borderRadius =
-    table.shape === "round"
-      ? "9999px"
-      : table.shape === "square"
-        ? "12px"
-        : "10px";
+  const { borderRadius, surfaceGradient } = tableShapeStyles(table);
 
   return (
     <div
       ref={tableDragHandle?.setNodeRef}
-      className={`flex h-full w-full cursor-grab flex-col items-center justify-center border-2 bg-white/95 px-2 text-center shadow-sm active:cursor-grabbing dark:bg-zinc-950/95 ${
+      className={`group/table relative flex h-full w-full cursor-grab flex-col items-center justify-center border px-2 text-center shadow-lg transition-all duration-200 active:cursor-grabbing ${surfaceGradient} ${
         isSelected
-          ? "border-amber-500 ring-2 ring-amber-400/60 ring-offset-2 ring-offset-transparent dark:border-amber-400 dark:ring-amber-500/50"
-          : "border-zinc-300 dark:border-zinc-600"
+          ? "border-amber-400/70 shadow-amber-500/15 ring-2 ring-amber-400/35"
+          : "border-zinc-600/60 shadow-black/30 hover:border-zinc-500/80 hover:shadow-xl hover:shadow-black/40"
       } ${
-        isDragging ? "ring-2 ring-zinc-400 dark:ring-zinc-500" : ""
+        isDragging
+          ? "scale-[1.02] border-zinc-500/80 opacity-90 shadow-2xl ring-2 ring-zinc-400/30"
+          : ""
       } ${className ?? ""}`}
       style={{ borderRadius }}
       onClick={(event) => {
@@ -69,10 +82,22 @@ function TableSurface({
       {...tableDragHandle?.listeners}
       {...tableDragHandle?.attributes}
     >
-      <span className="pointer-events-none truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+      <div
+        className="pointer-events-none absolute inset-[3px] opacity-40"
+        style={{
+          borderRadius:
+            table.shape === "round"
+              ? "9999px"
+              : table.shape === "square"
+                ? "11px"
+                : "9px",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.35)",
+        }}
+      />
+      <span className="pointer-events-none relative z-[1] max-w-full truncate text-xs font-semibold tracking-tight text-zinc-100 drop-shadow-sm">
         {table.name}
       </span>
-      <span className="pointer-events-none text-[10px] text-zinc-500 dark:text-zinc-400">
+      <span className="pointer-events-none relative z-[1] mt-0.5 text-[10px] font-medium text-zinc-400">
         {table.capacity} seats
       </span>
     </div>
@@ -105,7 +130,6 @@ export function TableWithChairs({
         transformOrigin: "center center",
       }}
     >
-      {/* Table body — below chairs, does not capture pointer events outside surface */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="pointer-events-auto absolute inset-0">
           <TableSurface
@@ -119,7 +143,6 @@ export function TableWithChairs({
         </div>
       </div>
 
-      {/* Chairs — above table body, each hitbox receives drops */}
       <div className="pointer-events-none absolute inset-0 z-30">
         {chairs.map((chair, index) => (
           <ChairSeat

@@ -13,8 +13,9 @@ export type LayoutTable = {
   rotation: number;
 };
 
-export const CANVAS_WIDTH = 800;
-export const CANVAS_HEIGHT = 560;
+export const CANVAS_WIDTH = 2400;
+export const CANVAS_HEIGHT = 1600;
+export const CANVAS_ROOM_INSET = 48;
 export const DEFAULT_TABLE_CAPACITY = 8;
 export const MIN_TABLE_CAPACITY = 1;
 export const MAX_TABLE_CAPACITY = 30;
@@ -36,8 +37,8 @@ export function isTableShape(value: string): value is TableShape {
 
 export function defaultPositionForIndex(index: number) {
   return {
-    x: 40 + (index % 4) * 180,
-    y: 40 + Math.floor(index / 4) * 180,
+    x: CANVAS_ROOM_INSET + 40 + (index % 5) * 320,
+    y: CANVAS_ROOM_INSET + 40 + Math.floor(index / 5) * 280,
   };
 }
 

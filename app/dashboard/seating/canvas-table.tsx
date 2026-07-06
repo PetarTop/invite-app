@@ -103,12 +103,14 @@ export function OverlayCanvasTable({
   guestsBySeat: Map<string, GoingGuest>;
 }) {
   return (
-    <TableWithChairs
-      table={table}
-      eventId={eventId}
-      guestsBySeat={guestsBySeat}
-      isDragging
-      className="cursor-grabbing shadow-lg"
-    />
+    <div className="scale-[1.02] opacity-95 drop-shadow-2xl">
+      <TableWithChairs
+        table={table}
+        eventId={eventId}
+        guestsBySeat={guestsBySeat}
+        isDragging
+        className="cursor-grabbing"
+      />
+    </div>
   );
 }

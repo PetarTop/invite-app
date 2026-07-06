@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import {
@@ -10,7 +11,16 @@ import {
   type TableShape,
 } from "@/lib/seating-layout";
 
+const SHAPE_OPTIONS: TableShape[] = ["round", "rectangle", "square"];
+
 import { createLayoutTable } from "../actions";
+import {
+  seatingBtnPrimary,
+  seatingBtnSecondary,
+  seatingInput,
+  seatingLabel,
+  seatingPanelSubtext,
+} from "./seating-ui";
 
 type CreateTableModalProps = {
   eventId: string;
@@ -27,12 +37,15 @@ export function CreateTableModal({
   onClose,
   onError,
 }: CreateTableModalProps) {
+  const router = useRouter();
   const [name, setName] = useState(defaultName);
+  const [selectedShape, setSelectedShape] = useState<TableShape>(shape);
   const [capacity, setCapacity] = useState(String(DEFAULT_TABLE_CAPACITY));
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setName(defaultName);
+    setSelectedShape(shape);
     setCapacity(String(DEFAULT_TABLE_CAPACITY));
   }, [defaultName, shape]);
 
@@ -71,7 +84,7 @@ export function CreateTableModal({
 
     startTransition(async () => {
       const result = await createLayoutTable(eventId, {
-        shape,
+        shape: selectedShape,
         name: trimmedName,
         capacity: parsedCapacity,
       });
@@ -81,18 +94,19 @@ export function CreateTableModal({
         return;
       }
 
+      router.refresh();
       onClose();
     });
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
+        className="w-full max-w-md rounded-2xl border border-zinc-800/90 bg-zinc-900 p-6 shadow-2xl shadow-black/50"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -100,20 +114,17 @@ export function CreateTableModal({
       >
         <h3
           id="create-table-title"
-          className="text-lg font-semibold text-zinc-900 dark:text-zinc-100"
+          className="text-lg font-semibold tracking-tight text-zinc-100"
         >
-          Add {shapeLabel(shape).toLowerCase()} table
+          Add table
         </h3>
-        <p className="mt-1 text-sm text-zinc-500">
-          Shape: {shapeLabel(shape)}
+        <p className={`mt-1 ${seatingPanelSubtext}`}>
+          Configure the new table for your floor plan.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="create-table-name"
-              className="text-xs font-medium text-zinc-600 dark:text-zinc-400"
-            >
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="create-table-name" className={seatingLabel}>
               Table name
             </label>
             <input
@@ -123,15 +134,32 @@ export function CreateTableModal({
               onChange={(event) => setName(event.target.value)}
               required
               autoFocus
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
+              className={seatingInput}
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="create-table-capacity"
-              className="text-xs font-medium text-zinc-600 dark:text-zinc-400"
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="create-table-shape" className={seatingLabel}>
+              Shape
+            </label>
+            <select
+              id="create-table-shape"
+              value={selectedShape}
+              onChange={(event) =>
+                setSelectedShape(event.target.value as TableShape)
+              }
+              className={seatingInput}
             >
+              {SHAPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {shapeLabel(option)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="create-table-capacity" className={seatingLabel}>
               Capacity
             </label>
             <input
@@ -142,7 +170,7 @@ export function CreateTableModal({
               value={capacity}
               onChange={(event) => setCapacity(event.target.value)}
               required
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-black"
+              className={seatingInput}
             />
           </div>
 
@@ -151,16 +179,16 @@ export function CreateTableModal({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className={seatingBtnSecondary}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+              className={seatingBtnPrimary}
             >
-              {isPending ? "Creating..." : "Create table"}
+              {isPending ? "Creating…" : "Create table"}
             </button>
           </div>
         </form>

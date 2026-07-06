@@ -2,25 +2,27 @@
 
 import { useEffect, useState } from "react";
 
+import type { RsvpStats } from "@/lib/rsvp-stats";
 import type { LayoutTable } from "@/lib/seating-layout";
 import type { GoingGuest } from "@/lib/seating-guests";
 
-import { SeatingPlanEditor } from "./seating/seating-plan-editor";
+import { SeatingStudio } from "../../../seating/seating-studio";
 
-export type { GoingGuest };
-
-type EventSeatingProps = {
+type SeatingStudioClientProps = {
   eventId: string;
+  eventName: string;
   tables: LayoutTable[];
   goingGuests: GoingGuest[];
+  rsvpStats: RsvpStats;
 };
 
-/** @deprecated Use the dedicated Seating Studio route instead. */
-export function EventSeating({
+export function SeatingStudioClient({
   eventId,
+  eventName,
   tables,
   goingGuests,
-}: EventSeatingProps) {
+  rsvpStats,
+}: SeatingStudioClientProps) {
   const [guests, setGuests] = useState(goingGuests);
 
   useEffect(() => {
@@ -28,10 +30,12 @@ export function EventSeating({
   }, [goingGuests]);
 
   return (
-    <SeatingPlanEditor
+    <SeatingStudio
       eventId={eventId}
+      eventName={eventName}
       tables={tables}
       guests={guests}
+      rsvpStats={rsvpStats}
       onGuestsChange={setGuests}
     />
   );

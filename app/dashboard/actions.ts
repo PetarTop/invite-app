@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
+function revalidateEventPaths(eventId: string) {
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/events/${eventId}/seating`);
+}
+
 import { requireUser } from "@/lib/auth";
 import {
   userOwnsEvent,
@@ -182,7 +187,7 @@ export async function createLayoutTable(
     return { error: error.message };
   }
 
-  revalidatePath("/dashboard");
+  revalidateEventPaths(eventId);
   return {};
 }
 
@@ -323,6 +328,12 @@ export async function deleteTableAction(
 
   const supabase = await getDashboardClient();
 
+  const { data: tableRow } = await supabase
+    .from("tables")
+    .select("event_id")
+    .eq("id", parsedTableId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("tables")
     .delete()
@@ -332,7 +343,9 @@ export async function deleteTableAction(
     return { error: error.message };
   }
 
-  revalidatePath("/dashboard");
+  if (tableRow?.event_id != null) {
+    revalidateEventPaths(String(tableRow.event_id));
+  }
   return {};
 }
 
@@ -383,7 +396,7 @@ export async function assignGuestToTableAction(
     return { error: error.message };
   }
 
-  revalidatePath("/dashboard");
+  revalidateEventPaths(String(guestOwnership.eventId));
   return {};
 }
 
@@ -434,6 +447,7 @@ export async function assignGuestToSeatAction(
       return { error: error.message };
     }
 
+    revalidateEventPaths(String(guestOwnership.eventId));
     return {};
   }
 
@@ -494,6 +508,7 @@ export async function assignGuestToSeatAction(
     return { error: error.message };
   }
 
+  revalidateEventPaths(String(guestOwnership.eventId));
   return {};
 }
 

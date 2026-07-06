@@ -1,5 +1,5 @@
 /** Temporary debug flag — set false or remove when seating DnD is stable. */
-export const SEAT_DND_DEBUG = true;
+export const SEAT_DND_DEBUG = false;
 
 export function logSeatDnd(
   phase: string,

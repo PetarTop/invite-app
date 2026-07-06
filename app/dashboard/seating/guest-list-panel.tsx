@@ -6,12 +6,14 @@ import { CSS } from "@dnd-kit/utilities";
 import type { GoingGuest } from "@/lib/seating-guests";
 import { guestDragId, unassignedZoneId } from "@/lib/seating-dnd";
 
+import { seatingPanel, seatingPanelHeader, seatingPanelSubtext } from "./seating-ui";
+
 type GuestListPanelProps = {
   eventId: string;
   guests: GoingGuest[];
 };
 
-function DraggableGuestCard({
+export function DraggableGuestCard({
   guest,
   eventId,
   isOverlay = false,
@@ -36,11 +38,23 @@ function DraggableGuestCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`cursor-grab rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm active:cursor-grabbing dark:border-zinc-700 dark:bg-zinc-950 ${
-        isDragging && !isOverlay ? "opacity-40" : ""
-      } ${isOverlay ? "shadow-md ring-2 ring-zinc-300 dark:ring-zinc-600" : ""}`}
+      className={`group flex cursor-grab items-center gap-2 rounded-lg border border-zinc-700/70 bg-zinc-800/50 px-3 py-2.5 text-sm text-zinc-100 shadow-sm transition-all duration-200 active:cursor-grabbing ${
+        isDragging && !isOverlay ? "opacity-30" : ""
+      } ${
+        isOverlay
+          ? "scale-105 border-amber-500/50 bg-zinc-800 shadow-xl shadow-black/40 ring-2 ring-amber-400/40"
+          : "hover:border-zinc-600 hover:bg-zinc-800 hover:shadow-md hover:shadow-black/20"
+      }`}
     >
-      {guest.name}
+      <span
+        className="flex shrink-0 flex-col gap-0.5 text-zinc-600 group-hover:text-zinc-500"
+        aria-hidden
+      >
+        <span className="block h-0.5 w-1 rounded-full bg-current" />
+        <span className="block h-0.5 w-1 rounded-full bg-current" />
+        <span className="block h-0.5 w-1 rounded-full bg-current" />
+      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{guest.name}</span>
     </div>
   );
 }
@@ -51,26 +65,50 @@ export function GuestListPanel({ eventId, guests }: GuestListPanelProps) {
   });
 
   return (
-    <aside className="w-full shrink-0 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 lg:w-52">
-      <h4 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-        Unassigned guests
-      </h4>
-      <p className="mt-1 text-xs text-zinc-500">
-        Drag guests onto chairs on the canvas.
+    <aside className={`w-full shrink-0 lg:w-56 xl:w-60 ${seatingPanel}`}>
+      <div className="flex items-center justify-between gap-2">
+        <h4 className={seatingPanelHeader}>Guests</h4>
+        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+          {guests.length}
+        </span>
+      </div>
+      <p className={`mt-1 ${seatingPanelSubtext}`}>
+        Drag guests onto empty chairs.
       </p>
 
       <div
         ref={setNodeRef}
-        className={`mt-3 flex min-h-32 flex-col gap-2 rounded-lg border border-dashed p-2 transition-colors ${
+        className={`mt-3 flex min-h-36 flex-col gap-2 rounded-xl border border-dashed p-2.5 transition-all duration-200 ${
           isOver
-            ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-900"
-            : "border-zinc-300 dark:border-zinc-700"
+            ? "border-amber-500/60 bg-amber-500/5 shadow-inner shadow-amber-500/10"
+            : "border-zinc-700/60 bg-zinc-950/40"
         }`}
       >
         {guests.length === 0 ? (
-          <p className="px-1 py-2 text-xs text-zinc-400">
-            All going guests are seated. Drag here to unassign.
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-6 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <p className="text-xs font-medium text-zinc-400">
+              Everyone is seated
+            </p>
+            <p className="text-[11px] leading-relaxed text-zinc-600">
+              Drag a guest here to unassign them from their seat.
+            </p>
+          </div>
         ) : (
           guests.map((guest) => (
             <DraggableGuestCard key={guest.id} guest={guest} eventId={eventId} />
