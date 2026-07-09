@@ -24,13 +24,40 @@ type RsvpFormProps = {
   slug: string;
 };
 
+function successMessage(status: RsvpState["status"]) {
+  if (status === "not_going") {
+    return "Hvala na odgovoru.";
+  }
+
+  return "Hvala! Vaš dolazak je potvrđen.";
+}
+
 export function RsvpForm({ eventId, slug }: RsvpFormProps) {
   const [state, formAction, pending] = useActionState(submitRsvp, initialState);
+
+  if (state.success) {
+    return (
+      <div
+        className="rsvp-success-enter rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-8 text-center"
+        role="status"
+      >
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+          ✓
+        </div>
+        <p className="mt-4 font-[family-name:var(--font-invite-display)] text-2xl text-emerald-100">
+          {successMessage(state.status)}
+        </p>
+        <p className="mt-2 text-sm text-emerald-200/70">
+          Vaš odgovor je uspješno zaprimljen.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
+      className="rounded-2xl border border-stone-800/80 bg-stone-950/50 p-5 sm:p-6"
     >
       <input type="hidden" name="event_id" value={eventId} />
       <input type="hidden" name="slug" value={slug} />
@@ -38,31 +65,35 @@ export function RsvpForm({ eventId, slug }: RsvpFormProps) {
       <div className="flex flex-col gap-2">
         <label
           htmlFor="guest-name"
-          className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400"
         >
-          Your name
+          Ime i prezime
         </label>
         <input
           id="guest-name"
           name="name"
           type="text"
           required
-          placeholder="Your full name"
-          disabled={state.success}
-          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none ring-zinc-400 focus:ring-2 disabled:opacity-60 dark:border-zinc-700 dark:bg-black dark:text-zinc-100"
+          autoComplete="name"
+          placeholder="Vaše ime i prezime"
+          disabled={pending}
+          className="h-12 w-full rounded-xl border border-stone-700/80 bg-stone-900/80 px-4 text-base text-stone-100 outline-none transition-colors placeholder:text-stone-600 focus:border-amber-200/40 focus:ring-2 focus:ring-amber-200/15 disabled:opacity-60"
         />
       </div>
 
       {state.error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <div
+          className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+          role="alert"
+        >
           <p>{state.error}</p>
           {state.error.includes("permission denied") && (
-            <div className="mt-3 space-y-2 text-xs text-red-900 dark:text-red-100">
+            <div className="mt-3 space-y-2 text-xs text-red-100/90">
               <p>
                 U Supabase dashboardu otvori <strong>SQL Editor</strong>,
                 zalijepi ovo i klikni <strong>Run</strong>:
               </p>
-              <pre className="overflow-x-auto rounded-md bg-red-100 p-2 font-mono text-[11px] text-red-950 dark:bg-red-900 dark:text-red-50">
+              <pre className="overflow-x-auto rounded-md bg-red-950/50 p-2 font-mono text-[11px]">
                 {GUESTS_INSERT_POLICY_SQL}
               </pre>
             </div>
@@ -70,32 +101,26 @@ export function RsvpForm({ eventId, slug }: RsvpFormProps) {
         </div>
       )}
 
-      {state.success ? (
-        <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
-          Thank you! Your RSVP has been recorded.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="submit"
-            name="status"
-            value="going"
-            disabled={pending}
-            className="inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            {pending ? "Saving..." : "Going"}
-          </button>
-          <button
-            type="submit"
-            name="status"
-            value="not_going"
-            disabled={pending}
-            className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-black dark:text-zinc-100 dark:hover:bg-zinc-900"
-          >
-            {pending ? "Saving..." : "Not going"}
-          </button>
-        </div>
-      )}
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="submit"
+          name="status"
+          value="going"
+          disabled={pending}
+          className="inline-flex h-12 min-h-12 flex-1 items-center justify-center rounded-xl bg-gradient-to-b from-amber-200 to-amber-300 px-5 text-base font-semibold text-stone-900 shadow-lg shadow-amber-950/30 transition-all hover:from-amber-100 hover:to-amber-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending ? "Šaljem…" : "Dolazim"}
+        </button>
+        <button
+          type="submit"
+          name="status"
+          value="not_going"
+          disabled={pending}
+          className="inline-flex h-12 min-h-12 flex-1 items-center justify-center rounded-xl border border-stone-600/80 bg-stone-900/60 px-5 text-base font-medium text-stone-200 transition-all hover:border-stone-500 hover:bg-stone-800/80 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending ? "Šaljem…" : "Ne dolazim"}
+        </button>
+      </div>
     </form>
   );
 }

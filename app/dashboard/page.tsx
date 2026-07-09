@@ -1,80 +1,11 @@
-import {
-  normalizeGuestRow,
-} from "@/lib/guest-realtime";
-import {
-  groupGuestsByEventId,
-} from "@/lib/rsvp-stats";
+import { normalizeGuestRow } from "@/lib/guest-realtime";
 import { requireUser } from "@/lib/auth";
+import { listOwnedEventsWithPackage } from "@/lib/seating-access";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
 import { DashboardEventsList } from "./dashboard-events-list";
-import { CreateEventForm } from "./create-event-form";
 import { SignOutButton } from "./sign-out-button";
-import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
-
-const GUESTS_SELECT_POLICY_SQL = `grant usage on schema public to anon, authenticated;
-grant select, update on table public.guests to anon, authenticated;
-
-alter table public.guests enable row level security;
-
-drop policy if exists "guests_select_public" on public.guests;
-drop policy if exists "guests_update_public" on public.guests;
-
-create policy "guests_select_public"
-on public.guests for select to anon, authenticated using (true);
-
-create policy "guests_update_public"
-on public.guests for update to anon, authenticated using (true) with check (true);`;
-
-const TABLES_UUID_FIX_SQL = `-- events.id is a number (e.g. 2), not uuid.
--- Run this in Supabase SQL Editor:
-
-alter table public.guests drop constraint if exists guests_table_id_fkey;
-drop table if exists public.tables cascade;
-
-create table public.tables (
-  id bigint generated always as identity primary key,
-  event_id bigint not null references public.events (id) on delete cascade,
-  name text not null,
-  capacity integer not null check (capacity > 0),
-  created_at timestamptz not null default now()
-);
-
-alter table public.guests drop column if exists table_id;
-alter table public.guests
-  add column table_id bigint references public.tables (id) on delete set null;`;
-
-const TABLES_POLICY_SQL = `grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.tables to anon, authenticated;
-
-alter table public.tables enable row level security;
-
-drop policy if exists "tables_select_public" on public.tables;
-drop policy if exists "tables_insert_public" on public.tables;
-drop policy if exists "tables_update_public" on public.tables;
-drop policy if exists "tables_delete_public" on public.tables;
-
-create policy "tables_select_public"
-on public.tables for select to anon, authenticated using (true);
-
-create policy "tables_insert_public"
-on public.tables for insert to anon, authenticated with check (true);
-
-create policy "tables_update_public"
-on public.tables for update to anon, authenticated using (true) with check (true);
-
-create policy "tables_delete_public"
-on public.tables for delete to anon, authenticated using (true);`;
-
-const TABLE_ID_FIX_SQL = `alter table public.guests
-  add column if not exists table_id bigint;
-
-alter table public.guests
-  drop constraint if exists guests_table_id_fkey;
-
-alter table public.guests
-  add constraint guests_table_id_fkey
-  foreign key (table_id) references public.tables (id) on delete set null;`;
+import { dashboardContainer, dashboardShell } from "./dashboard-ui";
 
 type GuestRow = {
   id: string | number;
@@ -90,7 +21,7 @@ async function fetchGuests(
   eventIds: number[],
 ) {
   if (eventIds.length === 0) {
-    return { data: [], error: null, missingTableIdColumn: false };
+    return { data: [], error: null };
   }
 
   const withTableId = await supabase
@@ -108,13 +39,13 @@ async function fetchGuests(
       .in("event_id", eventIds);
 
     return {
-      data: withoutTableId.data?.map((guest) => ({
-        ...guest,
-        table_id: null,
-        seat_index: null,
-      })),
+      data:
+        withoutTableId.data?.map((guest) => ({
+          ...guest,
+          table_id: null,
+          seat_index: null,
+        })) ?? [],
       error: withoutTableId.error,
-      missingTableIdColumn: true,
     };
   }
 
@@ -128,167 +59,101 @@ async function fetchGuests(
       .in("event_id", eventIds);
 
     return {
-      data: withoutSeatIndex.data?.map((guest) => ({
-        ...guest,
-        seat_index: null,
-      })),
+      data:
+        withoutSeatIndex.data?.map((guest) => ({
+          ...guest,
+          seat_index: null,
+        })) ?? [],
       error: withoutSeatIndex.error,
-      missingTableIdColumn: false,
     };
   }
 
   return {
-    data: withTableId.data,
+    data: withTableId.data as GuestRow[] | null,
     error: withTableId.error,
-    missingTableIdColumn: false,
   };
 }
-
-type EventRow = {
-  id: string;
-  name: string;
-  slug: string;
-};
 
 export default async function DashboardPage() {
   const user = await requireUser();
   const supabase = await getDashboardClient();
 
-  const { data: events, error: eventsError } = await supabase
-    .from("events")
-    .select("id, name, slug")
-    .eq("user_id", user.id)
-    .order("name");
+  let events: Awaited<ReturnType<typeof listOwnedEventsWithPackage>> = [];
+  let eventsError: { message: string } | null = null;
+
+  try {
+    events = await listOwnedEventsWithPackage(user.id);
+  } catch (error) {
+    eventsError =
+      error instanceof Error ? error : { message: "Failed to load events." };
+  }
 
   let guestsError: { message: string } | null = null;
-  let tablesError: { message: string } | null = null;
-  let missingTableIdColumn = false;
-  let guestsByEventId = new Map<string, { status: string | null }[]>();
-  let tablesByEventId = new Map<string, LayoutTable[]>();
   let allGuestRows: ReturnType<typeof normalizeGuestRow>[] = [];
-  let totalGuests = 0;
 
-  if (events && events.length > 0) {
+  if (events.length > 0) {
     const eventIds = events.map((event) => Number(event.id));
-
-    const [guestsResult, tablesResult] = await Promise.all([
-      fetchGuests(supabase, eventIds),
-      supabase
-        .from("tables")
-        .select(
-          "id, event_id, name, capacity, shape, x, y, width, height, rotation",
-        )
-        .in("event_id", eventIds),
-    ]);
+    const guestsResult = await fetchGuests(supabase, eventIds);
 
     guestsError = guestsResult.error;
-    tablesError = tablesResult.error;
-    missingTableIdColumn = guestsResult.missingTableIdColumn;
-
-    const matchingGuests = guestsResult.data ?? [];
-    allGuestRows = matchingGuests.map(normalizeGuestRow);
-
-    totalGuests = matchingGuests.length;
-    guestsByEventId = groupGuestsByEventId(matchingGuests);
-
-    for (const table of tablesResult.data ?? []) {
-      const eventId = String(table.event_id);
-
-      const eventTables = tablesByEventId.get(eventId) ?? [];
-      eventTables.push(normalizeLayoutTable(table));
-      tablesByEventId.set(eventId, eventTables);
-    }
+    allGuestRows = (guestsResult.data ?? []).map(normalizeGuestRow);
   }
 
   const error = eventsError ?? guestsError;
-  const showTablesPermissionHint =
-    tablesError?.message.includes("permission denied") ?? false;
-  const showGuestsPermissionHint =
-    !error && (events?.length ?? 0) > 0 && totalGuests === 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-10 px-6 py-12">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Dashboard
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Events</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Create and manage wedding invitation events.
-          </p>
-          <p className="text-sm text-zinc-500">{user.email}</p>
-        </div>
-        <SignOutButton />
-      </header>
+    <div className={dashboardShell}>
+      <div className={dashboardContainer}>
+        <header className="flex flex-col gap-6 border-b border-zinc-800/80 pb-8 sm:flex-row sm:items-start sm:justify-between">
+          <div className="max-w-xl">
+            <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-amber-200/60">
+              Invite
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+              Dobrodošli u vaš panel za organizaciju događaja.
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+              Ovde možete pratiti potvrde dolaska gostiju i upravljati
+              organizacijom vašeg događaja.
+            </p>
+            {user.email && (
+              <p className="mt-4 text-xs text-zinc-500">{user.email}</p>
+            )}
+          </div>
+          <SignOutButton />
+        </header>
 
-      {showTablesPermissionHint && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <p className="font-medium">
-            Seating ne radi jer app ne može čitati tablicu tables.
-          </p>
-          <p className="mt-2">
-            U Supabase SQL Editoru pokreni ovo:
-          </p>
-          <pre className="mt-3 overflow-x-auto rounded-md bg-amber-100 p-3 font-mono text-xs text-amber-950 dark:bg-amber-900 dark:text-amber-50">
-            {TABLES_POLICY_SQL}
-          </pre>
-        </div>
-      )}
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold text-zinc-100">
+            Vaši događaji
+          </h2>
 
-      {missingTableIdColumn && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <p className="font-medium">
-            Seating ne radi jer u tablici guests nedostaje stupac table_id.
-          </p>
-          <p className="mt-2">
-            U Supabase SQL Editoru pokreni ovo (nakon što postoji tablica tables):
-          </p>
-          <pre className="mt-3 overflow-x-auto rounded-md bg-amber-100 p-3 font-mono text-xs text-amber-950 dark:bg-amber-900 dark:text-amber-50">
-            {TABLE_ID_FIX_SQL}
-          </pre>
-        </div>
-      )}
-
-      {showGuestsPermissionHint && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          <p className="font-medium">
-            RSVP statistika je 0 jer app ne može čitati guests tablicu.
-          </p>
-          <pre className="mt-3 overflow-x-auto rounded-md bg-amber-100 p-3 font-mono text-xs text-amber-950 dark:bg-amber-900 dark:text-amber-50">
-            {GUESTS_SELECT_POLICY_SQL}
-          </pre>
-        </div>
-      )}
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">New event</h2>
-        <CreateEventForm />
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Your events</h2>
-
-        {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-            Failed to load events: {error.message}
-          </p>
-        ) : events && events.length > 0 ? (
-          <DashboardEventsList
-            events={(events as EventRow[]).map((event) => ({
-              id: String(event.id),
-              name: event.name,
-              slug: event.slug,
-            }))}
-            initialGuests={allGuestRows}
-            tablesByEventId={Object.fromEntries(tablesByEventId)}
-          />
-        ) : (
-          <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            No events yet. Create your first one above.
-          </p>
-        )}
-      </section>
+          {error ? (
+            <p
+              className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+              role="alert"
+            >
+              Nije moguće učitati podatke: {error.message}
+            </p>
+          ) : events.length > 0 ? (
+            <div className="mt-5">
+              <DashboardEventsList
+                events={events}
+                initialGuests={allGuestRows}
+              />
+            </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
+              <p className="text-sm font-medium text-zinc-300">
+                Trenutno nemate dodijeljenih događaja.
+              </p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Kada vam dodijelimo događaj, pojaviće se ovdje.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

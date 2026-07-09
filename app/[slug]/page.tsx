@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { getInvitationContent } from "@/lib/invitation-content";
 import { createClient } from "@/lib/supabase/server";
 
-import { RsvpForm } from "./rsvp-form";
+import { InvitationView } from "./invitation-view";
 
 type EventRow = {
   id: string;
@@ -13,6 +15,28 @@ type EventRow = {
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: event } = await supabase
+    .from("events")
+    .select("name")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!event) {
+    return { title: "Pozivnica nije pronađena" };
+  }
+
+  const content = getInvitationContent(slug, event.name);
+
+  return {
+    title: `${content.names} — Digitalna pozivnica`,
+    description: content.message,
+  };
+}
 
 export default async function EventPage({ params }: PageProps) {
   const { slug } = await params;
@@ -33,20 +57,7 @@ export default async function EventPage({ params }: PageProps) {
   }
 
   const { id, name } = event as EventRow;
+  const content = getInvitationContent(slug, name);
 
-  return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 px-6 py-16">
-      <header className="flex flex-col gap-3 text-center">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-          You are invited
-        </p>
-        <h1 className="text-4xl font-semibold tracking-tight">{name}</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Please let us know if you can make it.
-        </p>
-      </header>
-
-      <RsvpForm eventId={id} slug={slug} />
-    </div>
-  );
+  return <InvitationView eventId={id} slug={slug} content={content} />;
 }

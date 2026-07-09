@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+export type RsvpStatus = "going" | "not_going";
+
 export type RsvpState = {
   error?: string;
   success?: boolean;
+  status?: RsvpStatus;
 };
 
 export async function submitRsvp(
@@ -20,22 +23,36 @@ export async function submitRsvp(
   const status = formData.get("status")?.toString().trim();
 
   if (!eventId || !slug || !name) {
-    return { error: "Name is required." };
+    return { error: "Ime je obavezno." };
   }
 
   if (status !== "going" && status !== "not_going") {
-    return { error: "Please choose whether you are going or not." };
+    return { error: "Molimo odaberite dolazite li ili ne." };
   }
 
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
     ? createAdminClient()
     : await createClient();
 
-  const { error } = await supabase.from("guests").insert({
+  let { error } = await supabase.from("guests").insert({
     event_id: eventId,
     name,
     status,
+    table_id: null,
+    seat_index: null,
   });
+
+  if (
+    error &&
+    (error.message.includes("table_id") ||
+      error.message.includes("seat_index"))
+  ) {
+    ({ error } = await supabase.from("guests").insert({
+      event_id: eventId,
+      name,
+      status,
+    }));
+  }
 
   if (error) {
     return { error: error.message };
@@ -43,5 +60,5 @@ export async function submitRsvp(
 
   revalidatePath(`/${slug}`);
   revalidatePath("/dashboard");
-  return { success: true };
+  return { success: true, status };
 }

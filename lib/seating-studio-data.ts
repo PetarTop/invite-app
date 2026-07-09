@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
+import { getOwnedEventWithPackage } from "@/lib/seating-access";
 import { isGoingGuest } from "@/lib/rsvp-stats";
 import { calculateRsvpStats } from "@/lib/rsvp-stats";
 import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
@@ -73,22 +74,22 @@ async function fetchGuestsForEvent(
 export async function loadSeatingStudioData(
   eventId: string,
 ): Promise<SeatingStudioData> {
-  const user = await requireUser();
+  await requireUser();
+
+  const event = await getOwnedEventWithPackage(eventId);
+
+  if (!event) {
+    notFound();
+  }
+
+  if (!event.seating_enabled) {
+    notFound();
+  }
+
   const supabase = await getDashboardClient();
   const numericEventId = Number(eventId);
 
   if (!Number.isFinite(numericEventId)) {
-    notFound();
-  }
-
-  const { data: event, error: eventError } = await supabase
-    .from("events")
-    .select("id, name, slug")
-    .eq("id", numericEventId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (eventError || !event) {
     notFound();
   }
 
@@ -130,7 +131,7 @@ export async function loadSeatingStudioData(
 
   return {
     event: {
-      id: String(event.id),
+      id: event.id,
       name: event.name,
       slug: event.slug,
     },
