@@ -4,7 +4,7 @@ import { shapeLabel, type LayoutTable } from "@/lib/seating-layout";
 
 import { TableSettingsPanel } from "./table-settings-panel";
 import type { StudioSaveStatus } from "./seating-toolbar";
-import { seatingLabel, studioSidebar } from "./seating-ui";
+import { seatingLabel, studioSidebar, studioSidebarScroll } from "./seating-ui";
 
 type PropertiesPanelProps = {
   table: LayoutTable | null;
@@ -14,6 +14,8 @@ type PropertiesPanelProps = {
   onClearSelection: () => void;
   onSaveStateChange?: (status: StudioSaveStatus) => void;
 };
+
+const panelChrome = `${studioSidebar} h-full shrink-0 border-l`;
 
 export function PropertiesPanel({
   table,
@@ -26,7 +28,7 @@ export function PropertiesPanel({
   if (!table) {
     return (
       <aside
-        className={`flex h-auto w-full shrink-0 flex-col items-center justify-center border-zinc-800/80 p-6 text-center xl:h-full xl:w-80 xl:border-l ${studioSidebar}`}
+        className={`${panelChrome} flex flex-col items-center justify-center p-6 text-center`}
       >
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800/60 text-zinc-500">
           <svg
@@ -61,15 +63,13 @@ export function PropertiesPanel({
   }
 
   return (
-    <aside
-      className={`h-auto w-full shrink-0 overflow-y-auto border-zinc-800/80 xl:h-full xl:w-80 xl:border-l ${studioSidebar}`}
-    >
-      <div className="border-b border-zinc-800/80 p-4">
+    <aside className={`${panelChrome} flex flex-col overflow-hidden`}>
+      <div className="shrink-0 border-b border-zinc-800/80 p-4">
         <h2 className="text-sm font-semibold text-zinc-100">Properties</h2>
         <p className="mt-0.5 truncate text-xs text-zinc-500">{table.name}</p>
       </div>
 
-      <div className="p-4">
+      <div className={`${studioSidebarScroll} p-4`}>
         <div className="mb-4 flex flex-col gap-1.5">
           <span className={seatingLabel}>Shape</span>
           <div className="rounded-lg border border-zinc-700/60 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-300">

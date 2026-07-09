@@ -29,16 +29,23 @@ export const seatingCanvas =
 export const seatingCanvasEmpty =
   "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center";
 
-export const studioShell = "flex h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100";
+export const studioShell =
+  "flex h-full w-full max-w-full flex-col overflow-hidden bg-zinc-950 text-zinc-100";
+
+export const studioMain =
+  "flex h-full min-h-0 w-full overflow-hidden";
 
 export const studioSidebar =
-  "flex w-72 shrink-0 flex-col border-zinc-800/80 bg-zinc-900/50 xl:w-80";
+  "flex h-full w-72 shrink-0 flex-col overflow-hidden border-zinc-800/80 bg-zinc-900/50 xl:w-80";
 
 export const studioSidebarSection =
   "border-b border-zinc-800/80 p-4";
 
+export const studioSidebarScroll =
+  "min-h-0 flex-1 overflow-y-auto overscroll-contain";
+
 export const studioCanvasViewport =
-  "relative min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-950/80 p-6";
+  "relative min-h-0 min-w-0 flex-1 overflow-hidden bg-zinc-950";
 
 export const studioFloorCanvas =
   "relative shrink-0 overflow-visible rounded-xl border-2 border-dashed border-zinc-700/40 bg-[#0c0c0e] shadow-[inset_0_4px_48px_rgba(0,0,0,0.55)] bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]";

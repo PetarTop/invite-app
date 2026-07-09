@@ -38,6 +38,7 @@ import {
   updateTablePositionAction,
 } from "../actions";
 import { OverlayCanvasTable } from "./canvas-table";
+import { CanvasWorkspace } from "./canvas-workspace";
 import { CreateTableModal } from "./create-table-modal";
 import { GuestDragOverlay } from "./guest-list-panel";
 import { GuestSidebar } from "./guest-sidebar";
@@ -47,7 +48,7 @@ import {
   SeatingToolbar,
   type StudioSaveStatus,
 } from "./seating-toolbar";
-import { studioCanvasViewport, studioShell } from "./seating-ui";
+import { studioMain, studioShell } from "./seating-ui";
 import type { StudioTool } from "./tool-palette";
 
 export type SeatingStudioProps = {
@@ -402,7 +403,7 @@ export function SeatingStudio({
   }
 
   const studioBody = (
-    <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+    <div className={studioMain}>
       <GuestSidebar
         eventId={eventId}
         guests={guests}
@@ -411,16 +412,7 @@ export function SeatingStudio({
         onAddTable={handleAddTable}
       />
 
-      <div className={studioCanvasViewport}>
-        {error && (
-          <p
-            className="mb-4 rounded-xl border border-red-900/50 bg-red-950/40 px-4 py-2.5 text-sm text-red-300"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-
+      <CanvasWorkspace error={error}>
         {!isMounted ? (
           <StaticSeatingCanvas
             eventId={eventId}
@@ -440,7 +432,7 @@ export function SeatingStudio({
             highlightedDropId={highlightedDropId}
           />
         )}
-      </div>
+      </CanvasWorkspace>
 
       <PropertiesPanel
         table={selectedTable}
@@ -465,32 +457,34 @@ export function SeatingStudio({
         saveStatus={saveStatus}
       />
 
-      {!isMounted ? (
-        studioBody
-      ) : (
-        <DndContext
-          id={`seating-studio-${eventId}`}
-          sensors={sensors}
-          collisionDetection={seatingCollisionDetection}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          {studioBody}
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {!isMounted ? (
+          studioBody
+        ) : (
+          <DndContext
+            id={`seating-studio-${eventId}`}
+            sensors={sensors}
+            collisionDetection={seatingCollisionDetection}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            {studioBody}
 
-          <DragOverlay>
-            {draggingTable ? (
-              <OverlayCanvasTable
-                table={draggingTable}
-                eventId={eventId}
-                guestsBySeat={guestsBySeat}
-              />
-            ) : activeGuest ? (
-              <GuestDragOverlay guest={activeGuest} eventId={eventId} />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+            <DragOverlay>
+              {draggingTable ? (
+                <OverlayCanvasTable
+                  table={draggingTable}
+                  eventId={eventId}
+                  guestsBySeat={guestsBySeat}
+                />
+              ) : activeGuest ? (
+                <GuestDragOverlay guest={activeGuest} eventId={eventId} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
+      </div>
 
       {createShape && (
         <CreateTableModal
