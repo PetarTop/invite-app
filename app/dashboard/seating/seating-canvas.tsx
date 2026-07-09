@@ -24,7 +24,7 @@ type SeatingCanvasProps = {
   onDeselect: () => void;
   onSelectTable: (tableId: string) => void;
   onUnassignGuest: (guestId: string) => void;
-  highlightedDropId: string | null;
+  activeChairId: string | null;
 };
 
 export function SeatingCanvas({
@@ -36,7 +36,7 @@ export function SeatingCanvas({
   onDeselect,
   onSelectTable,
   onUnassignGuest,
-  highlightedDropId,
+  activeChairId,
 }: SeatingCanvasProps) {
   const floorWidth = CANVAS_WIDTH - CANVAS_ROOM_INSET * 2;
   const floorHeight = CANVAS_HEIGHT - CANVAS_ROOM_INSET * 2;
@@ -105,7 +105,7 @@ export function SeatingCanvas({
             isSelected={selectedTableId === table.id}
             onSelect={() => onSelectTable(table.id)}
             onUnassignGuest={onUnassignGuest}
-            highlightedDropId={highlightedDropId}
+            activeChairId={activeChairId}
           />
         ))
       )}

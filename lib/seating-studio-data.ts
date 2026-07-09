@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { isGoingGuest } from "@/lib/rsvp-stats";
 import { calculateRsvpStats } from "@/lib/rsvp-stats";
 import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
+import { normalizeGuestRow, type GuestRealtimeRow } from "@/lib/guest-realtime";
 import type { GoingGuest } from "@/lib/seating-guests";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
@@ -17,6 +18,7 @@ export type SeatingStudioData = {
   event: SeatingStudioEvent;
   tables: LayoutTable[];
   goingGuests: GoingGuest[];
+  allGuests: GuestRealtimeRow[];
   rsvpStats: ReturnType<typeof calculateRsvpStats>;
 };
 
@@ -134,6 +136,7 @@ export async function loadSeatingStudioData(
     },
     tables: (tablesResult.data ?? []).map(normalizeLayoutTable),
     goingGuests,
+    allGuests: allGuests.map(normalizeGuestRow),
     rsvpStats: calculateRsvpStats(allGuests),
   };
 }

@@ -10,12 +10,14 @@ type SeatingToolbarProps = {
   eventName: string;
   rsvpStats: RsvpStats;
   saveStatus: StudioSaveStatus;
+  activeChairId?: string | null;
 };
 
 export function SeatingToolbar({
   eventName,
   rsvpStats,
   saveStatus,
+  activeChairId,
 }: SeatingToolbarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-zinc-800/90 bg-zinc-900/80 px-4 backdrop-blur-md sm:px-5">
@@ -54,6 +56,12 @@ export function SeatingToolbar({
       </div>
 
       <div className="flex items-center gap-3 sm:gap-5">
+        {activeChairId && (
+          <span className="hidden rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] text-emerald-300 lg:inline">
+            Active target: {activeChairId}
+          </span>
+        )}
+
         <div className="hidden items-center gap-2 sm:flex">
           <RsvpPill label="Going" value={rsvpStats.going} tone="green" />
           <RsvpPill label="Pending" value={rsvpStats.pending} tone="zinc" />

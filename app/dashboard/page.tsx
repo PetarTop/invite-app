@@ -1,12 +1,14 @@
 import {
-  calculateRsvpStats,
+  normalizeGuestRow,
+} from "@/lib/guest-realtime";
+import {
   groupGuestsByEventId,
 } from "@/lib/rsvp-stats";
 import { requireUser } from "@/lib/auth";
 import { getDashboardClient } from "@/lib/supabase/dashboard";
 
+import { DashboardEventsList } from "./dashboard-events-list";
 import { CreateEventForm } from "./create-event-form";
-import { OpenSeatingPlannerLink } from "./open-seating-planner-link";
 import { SignOutButton } from "./sign-out-button";
 import { normalizeLayoutTable, type LayoutTable } from "@/lib/seating-layout";
 
@@ -163,6 +165,7 @@ export default async function DashboardPage() {
   let missingTableIdColumn = false;
   let guestsByEventId = new Map<string, { status: string | null }[]>();
   let tablesByEventId = new Map<string, LayoutTable[]>();
+  let allGuestRows: ReturnType<typeof normalizeGuestRow>[] = [];
   let totalGuests = 0;
 
   if (events && events.length > 0) {
@@ -183,6 +186,7 @@ export default async function DashboardPage() {
     missingTableIdColumn = guestsResult.missingTableIdColumn;
 
     const matchingGuests = guestsResult.data ?? [];
+    allGuestRows = matchingGuests.map(normalizeGuestRow);
 
     totalGuests = matchingGuests.length;
     guestsByEventId = groupGuestsByEventId(matchingGuests);
@@ -270,45 +274,15 @@ export default async function DashboardPage() {
             Failed to load events: {error.message}
           </p>
         ) : events && events.length > 0 ? (
-          <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-            {(events as EventRow[]).map((event) => {
-              const eventId = String(event.id);
-              const stats = calculateRsvpStats(
-                guestsByEventId.get(eventId) ?? null,
-              );
-
-              return (
-                <li key={event.id} className="px-4 py-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">{event.name}</span>
-                      <code className="w-fit rounded bg-zinc-100 px-2 py-1 font-mono text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                        {event.slug}
-                      </code>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-full bg-green-100 px-2.5 py-1 font-medium text-green-800 dark:bg-green-950 dark:text-green-200">
-                        Going: {stats.going}
-                      </span>
-                      <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-800 dark:bg-red-950 dark:text-red-200">
-                        Not going: {stats.not_going}
-                      </span>
-                      <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        Pending: {stats.pending}
-                      </span>
-                    </div>
-                  </div>
-
-                  <OpenSeatingPlannerLink
-                    eventId={eventId}
-                    goingCount={stats.going}
-                    tableCount={(tablesByEventId.get(eventId) ?? []).length}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <DashboardEventsList
+            events={(events as EventRow[]).map((event) => ({
+              id: String(event.id),
+              name: event.name,
+              slug: event.slug,
+            }))}
+            initialGuests={allGuestRows}
+            tablesByEventId={Object.fromEntries(tablesByEventId)}
+          />
         ) : (
           <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
             No events yet. Create your first one above.

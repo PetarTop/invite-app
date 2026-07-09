@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import type { RsvpStats } from "@/lib/rsvp-stats";
 import { seatingCollisionDetection } from "@/lib/seating-collision";
 import {
+  activeChairIdFromOver,
   isGuestDragId,
   isLayoutTableDragId,
   parseChairDropData,
@@ -24,6 +25,7 @@ import {
 import { SEAT_DND_DEBUG, logSeatDnd } from "@/lib/seating-dnd-debug";
 import {
   buildGuestsBySeat,
+  normalizeGuestsForTables,
   type GoingGuest,
 } from "@/lib/seating-guests";
 import {
@@ -72,9 +74,7 @@ export function SeatingStudio({
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [draggingTableId, setDraggingTableId] = useState<string | null>(null);
   const [activeGuestId, setActiveGuestId] = useState<string | null>(null);
-  const [highlightedDropId, setHighlightedDropId] = useState<string | null>(
-    null,
-  );
+  const [activeChairId, setActiveChairId] = useState<string | null>(null);
   const [createShape, setCreateShape] = useState<TableShape | null>(null);
   const [activeTool, setActiveTool] = useState<StudioTool>("select");
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +127,20 @@ export function SeatingStudio({
     }),
   );
 
-  const guestsBySeat = useMemo(() => buildGuestsBySeat(guests), [guests]);
+  const tableIds = useMemo(
+    () => new Set(tables.map((table) => table.id)),
+    [tables],
+  );
+
+  const displayGuests = useMemo(
+    () => normalizeGuestsForTables(guests, tableIds),
+    [guests, tableIds],
+  );
+
+  const guestsBySeat = useMemo(
+    () => buildGuestsBySeat(displayGuests),
+    [displayGuests],
+  );
 
   const selectedTable = useMemo(
     () => tables.find((table) => table.id === selectedTableId) ?? null,
@@ -138,7 +151,7 @@ export function SeatingStudio({
     tables.find((table) => table.id === draggingTableId) ?? null;
 
   const activeGuest =
-    guests.find((guest) => guest.id === activeGuestId) ?? null;
+    displayGuests.find((guest) => guest.id === activeGuestId) ?? null;
 
   const defaultTableName = `Table ${tables.length + 1}`;
 
@@ -193,12 +206,11 @@ export function SeatingStudio({
   }
 
   function handleDragOver(event: DragOverEvent) {
-    const overId = event.over ? String(event.over.id) : null;
-    setHighlightedDropId(overId);
+    setActiveChairId(activeChairIdFromOver(event.over));
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setHighlightedDropId(null);
+    setActiveChairId(null);
     const id = String(event.active.id);
 
     if (isLayoutTableDragId(id)) {
@@ -406,7 +418,7 @@ export function SeatingStudio({
     <div className={studioMain}>
       <GuestSidebar
         eventId={eventId}
-        guests={guests}
+        guests={displayGuests}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
         onAddTable={handleAddTable}
@@ -429,7 +441,7 @@ export function SeatingStudio({
             onDeselect={() => setSelectedTableId(null)}
             onSelectTable={setSelectedTableId}
             onUnassignGuest={handleUnassignGuest}
-            highlightedDropId={highlightedDropId}
+            activeChairId={activeChairId}
           />
         )}
       </CanvasWorkspace>
@@ -455,11 +467,14 @@ export function SeatingStudio({
         eventName={eventName}
         rsvpStats={rsvpStats}
         saveStatus={saveStatus}
+        activeChairId={SEAT_DND_DEBUG ? activeChairId : null}
       />
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {!isMounted ? (
-          studioBody
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            {studioBody}
+          </div>
         ) : (
           <DndContext
             id={`seating-studio-${eventId}`}
@@ -469,9 +484,11 @@ export function SeatingStudio({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            {studioBody}
+            <div className="flex h-full min-h-0 flex-col overflow-hidden">
+              {studioBody}
+            </div>
 
-            <DragOverlay>
+            <DragOverlay dropAnimation={null}>
               {draggingTable ? (
                 <OverlayCanvasTable
                   table={draggingTable}
@@ -479,7 +496,7 @@ export function SeatingStudio({
                   guestsBySeat={guestsBySeat}
                 />
               ) : activeGuest ? (
-                <GuestDragOverlay guest={activeGuest} eventId={eventId} />
+                <GuestDragOverlay guest={activeGuest} />
               ) : null}
             </DragOverlay>
           </DndContext>

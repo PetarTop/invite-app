@@ -328,6 +328,15 @@ export async function deleteTableAction(
 
   const supabase = await getDashboardClient();
 
+  const { error: unassignError } = await supabase
+    .from("guests")
+    .update({ table_id: null, seat_index: null })
+    .eq("table_id", parsedTableId);
+
+  if (unassignError) {
+    return { error: unassignError.message };
+  }
+
   const { data: tableRow } = await supabase
     .from("tables")
     .select("event_id")

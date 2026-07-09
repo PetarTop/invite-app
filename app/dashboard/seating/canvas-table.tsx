@@ -17,7 +17,7 @@ type CanvasTableProps = {
   isSelected?: boolean;
   onSelect?: () => void;
   onUnassignGuest?: (guestId: string) => void;
-  highlightedDropId?: string | null;
+  activeChairId?: string | null;
 };
 
 function canvasTableStyle(
@@ -44,7 +44,7 @@ export function CanvasTable({
   isSelected = false,
   onSelect,
   onUnassignGuest,
-  highlightedDropId,
+  activeChairId,
 }: CanvasTableProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: layoutTableDragId(eventId, table.id),
@@ -67,7 +67,7 @@ export function CanvasTable({
         tableDragHandle={{ listeners, attributes, setNodeRef }}
         onSelectTable={onSelect}
         onUnassignGuest={onUnassignGuest}
-        highlightedDropId={highlightedDropId}
+        activeChairId={activeChairId}
       />
     </div>
   );

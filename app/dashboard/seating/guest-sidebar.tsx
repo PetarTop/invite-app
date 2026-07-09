@@ -62,8 +62,10 @@ export function GuestSidebar({
   const unassignedCount = guests.filter(isGuestUnassignedForCanvas).length;
 
   return (
-    <aside className={`${studioSidebar} border-r`}>
-      <div className={`${studioSidebarSection} max-h-[42%] shrink-0 overflow-y-auto overscroll-contain`}>
+    <aside className={`${studioSidebar} border-r max-lg:border-b lg:border-b-0`}>
+      <div
+        className={`${studioSidebarSection} max-h-[min(28vh,14rem)] overflow-y-auto overscroll-contain lg:max-h-[min(38vh,18rem)]`}
+      >
         <ToolPalette
           activeTool={activeTool}
           onSelectTool={onSelectTool}
@@ -71,51 +73,53 @@ export function GuestSidebar({
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className={`${studioSidebarSection} shrink-0 border-b`}>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-zinc-100">Guests</h2>
-            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-400">
-              {unassignedCount} free
-            </span>
-          </div>
-
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search guests…"
-            className="mb-3 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
-          />
-
-          <div className="flex gap-1 rounded-lg bg-zinc-950/60 p-1">
-            {(
-              [
-                ["unassigned", "Unassigned"],
-                ["seated", "Seated"],
-                ["all", "All"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFilter(value)}
-                className={`flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                  filter === value
-                    ? "bg-zinc-800 text-zinc-100"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+      <div className={`${studioSidebarSection} shrink-0`}>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-zinc-100">Guests</h2>
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+            {unassignedCount} free
+          </span>
         </div>
 
-        <div className={`${studioSidebarScroll} p-4 pt-3`}>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search guests…"
+          className="mb-3 w-full rounded-lg border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+        />
+
+        <div className="flex gap-1 rounded-lg bg-zinc-950/60 p-1">
+          {(
+            [
+              ["unassigned", "Unassigned"],
+              ["seated", "Seated"],
+              ["all", "All"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              className={`flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                filter === value
+                  ? "bg-zinc-800 text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-hidden px-4 pb-4">
+        <div
+          ref={setNodeRef}
+          className={`${studioSidebarScroll} -mx-1 min-w-0 max-w-full overflow-x-hidden px-1`}
+        >
           <div
-            ref={setNodeRef}
-            className={`flex min-h-[8rem] flex-col gap-2 rounded-xl border border-dashed p-2 transition-colors ${
+            className={`flex min-w-0 max-w-full flex-col gap-2 overflow-hidden rounded-xl border border-dashed p-2 transition-colors ${
               isOver
                 ? "border-amber-500/50 bg-amber-500/5"
                 : "border-zinc-700/50 bg-zinc-950/30"
@@ -137,11 +141,11 @@ export function GuestSidebar({
               )
             )}
           </div>
-
-          <p className="mt-3 shrink-0 text-[10px] leading-relaxed text-zinc-600">
-            Drag unassigned guests to chairs. Drop here to unassign.
-          </p>
         </div>
+
+        <p className="mt-2 shrink-0 text-[10px] leading-relaxed text-zinc-600">
+          Drag unassigned guests to chairs. Drop here to unassign.
+        </p>
       </div>
     </aside>
   );

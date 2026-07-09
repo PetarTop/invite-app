@@ -15,7 +15,7 @@ type PropertiesPanelProps = {
   onSaveStateChange?: (status: StudioSaveStatus) => void;
 };
 
-const panelChrome = `${studioSidebar} h-full shrink-0 border-l`;
+const panelChrome = `${studioSidebar} h-full min-h-0 shrink-0 border-l max-lg:max-h-[30vh] lg:border-l lg:border-t-0 max-lg:border-l-0 max-lg:border-t`;
 
 export function PropertiesPanel({
   table,

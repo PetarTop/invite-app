@@ -26,7 +26,7 @@ type TableWithChairsProps = {
   };
   onSelectTable?: () => void;
   onUnassignGuest?: (guestId: string) => void;
-  highlightedDropId?: string | null;
+  activeChairId?: string | null;
 };
 
 function tableShapeStyles(table: LayoutTable) {
@@ -115,7 +115,7 @@ export function TableWithChairs({
   tableDragHandle,
   onSelectTable,
   onUnassignGuest,
-  highlightedDropId,
+  activeChairId,
   children,
 }: TableWithChairsProps & { children?: ReactNode }) {
   const chairs = calculateChairPositionsForTable(table);
@@ -143,7 +143,7 @@ export function TableWithChairs({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-30">
+      <div className="pointer-events-none absolute inset-0 z-40">
         {chairs.map((chair, index) => (
           <ChairSeat
             key={index}
@@ -157,7 +157,7 @@ export function TableWithChairs({
             rotation={chair.rotation}
             guest={guestsBySeat.get(seatKey(table.id, index)) ?? null}
             onUnassignGuest={onUnassignGuest}
-            highlightedDropId={highlightedDropId}
+            activeChairId={activeChairId}
           />
         ))}
       </div>

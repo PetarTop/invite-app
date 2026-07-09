@@ -15,8 +15,7 @@ export default async function SeatingStudioPage({ params }: SeatingStudioPagePro
       eventId={data.event.id}
       eventName={data.event.name}
       tables={data.tables}
-      goingGuests={data.goingGuests}
-      rsvpStats={data.rsvpStats}
+      initialGuests={data.allGuests}
     />
   );
 }

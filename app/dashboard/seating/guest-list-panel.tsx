@@ -28,9 +28,12 @@ export function DraggableGuestCard({
       data: { guest },
     });
 
-  const style = transform
-    ? { transform: CSS.Translate.toString(transform) }
-    : undefined;
+  const style =
+    isDragging || isOverlay
+      ? undefined
+      : transform
+        ? { transform: CSS.Translate.toString(transform) }
+        : undefined;
 
   return (
     <div
@@ -38,7 +41,7 @@ export function DraggableGuestCard({
       style={style}
       {...listeners}
       {...attributes}
-      className={`group flex cursor-grab items-center gap-2 rounded-lg border border-zinc-700/70 bg-zinc-800/50 px-3 py-2.5 text-sm text-zinc-100 shadow-sm transition-all duration-200 active:cursor-grabbing ${
+      className={`group flex w-full max-w-full cursor-grab items-center gap-2 overflow-hidden rounded-lg border border-zinc-700/70 bg-zinc-800/50 px-3 py-2.5 text-sm text-zinc-100 shadow-sm transition-all duration-200 active:cursor-grabbing touch-none ${
         isDragging && !isOverlay ? "opacity-30" : ""
       } ${
         isOverlay
@@ -119,14 +122,20 @@ export function GuestListPanel({ eventId, guests }: GuestListPanelProps) {
   );
 }
 
-export function GuestDragOverlay({
-  guest,
-  eventId,
-}: {
-  guest: GoingGuest;
-  eventId: string;
-}) {
+export function GuestDragOverlay({ guest }: { guest: GoingGuest }) {
   return (
-    <DraggableGuestCard guest={guest} eventId={eventId} isOverlay />
+    <div className="pointer-events-none w-64 max-w-[min(16rem,calc(100vw-2rem))] cursor-grabbing touch-none">
+      <div className="flex scale-105 items-center gap-2 overflow-hidden rounded-lg border border-amber-500/50 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 shadow-xl shadow-black/40 ring-2 ring-amber-400/40">
+        <span
+          className="flex shrink-0 flex-col gap-0.5 text-zinc-500"
+          aria-hidden
+        >
+          <span className="block h-0.5 w-1 rounded-full bg-current" />
+          <span className="block h-0.5 w-1 rounded-full bg-current" />
+          <span className="block h-0.5 w-1 rounded-full bg-current" />
+        </span>
+        <span className="min-w-0 flex-1 truncate font-medium">{guest.name}</span>
+      </div>
+    </div>
   );
 }

@@ -65,22 +65,22 @@ function EmptyChairVisual({ isHighlighted }: { isHighlighted: boolean }) {
       style={{ width: CHAIR_HITBOX_SIZE, height: CHAIR_HITBOX_SIZE }}
     >
       <div
-        className={`relative rounded-full transition-all duration-200 ${
+        className={`relative rounded-full transition-all duration-150 ${
           isHighlighted
-            ? "scale-110 shadow-lg shadow-emerald-500/30"
+            ? "scale-110 shadow-lg shadow-emerald-500/40"
             : "group-hover/chair:scale-105 group-hover/chair:border-zinc-400/80"
         }`}
         style={{ width: CHAIR_VISUAL_SIZE, height: CHAIR_VISUAL_SIZE }}
       >
         <div
-          className={`absolute inset-0 rounded-full border-2 transition-all duration-200 ${
+          className={`absolute inset-0 rounded-full border-2 transition-all duration-150 ${
             isHighlighted
-              ? "border-emerald-400 bg-emerald-500/25 ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-zinc-950"
+              ? "border-emerald-400 bg-emerald-500/30 ring-2 ring-emerald-400/60 ring-offset-2 ring-offset-zinc-950"
               : "border-dashed border-zinc-600/70 bg-zinc-800/50 group-hover/chair:border-zinc-500 group-hover/chair:bg-zinc-700/50"
           }`}
         />
         {isHighlighted && (
-          <div className="absolute inset-0 animate-pulse rounded-full bg-emerald-400/20" />
+          <div className="absolute -inset-1 rounded-full bg-emerald-400/20 blur-[2px]" />
         )}
       </div>
     </div>
@@ -93,23 +93,23 @@ function EmptyChairDrop({
   seatIndex,
   seatNumber,
   position,
-  isGlobalHoverTarget,
+  activeChairId,
 }: {
   tableId: string;
   tableName: string;
   seatIndex: number;
   seatNumber: number;
   position: ChairPositionStyle;
-  isGlobalHoverTarget?: boolean;
+  activeChairId?: string | null;
 }) {
   const dropId = chairDropId(tableId, seatIndex);
 
-  const { isOver, setNodeRef } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: dropId,
     data: chairDropData(tableId, seatIndex),
   });
 
-  const isHighlighted = isOver || Boolean(isGlobalHoverTarget);
+  const isHighlighted = activeChairId === dropId;
 
   useEffect(() => {
     logSeatDnd("droppable:registered", {
@@ -125,7 +125,7 @@ function EmptyChairDrop({
   return (
     <div
       ref={setNodeRef}
-      className="group/chair pointer-events-auto absolute z-30 cursor-pointer"
+      className="group/chair pointer-events-auto absolute z-40 cursor-pointer"
       style={chairHitboxStyle(position)}
       data-seat-debug={dropId}
       aria-label={`Empty seat ${seatNumber} at ${tableName}`}
@@ -183,7 +183,7 @@ function OccupiedChair({
   return (
     <div
       ref={setNodeRef}
-      className="group/chair pointer-events-auto absolute z-30"
+      className="group/chair pointer-events-auto absolute z-40"
       style={{
         ...chairHitboxStyle(position),
         ...dragStyle,
@@ -262,7 +262,7 @@ export function ChairSeat({
   rotation,
   guest,
   onUnassignGuest,
-  highlightedDropId,
+  activeChairId,
 }: {
   eventId: string;
   tableId: string;
@@ -274,10 +274,9 @@ export function ChairSeat({
   rotation: number;
   guest: GoingGuest | null;
   onUnassignGuest?: (guestId: string) => void;
-  highlightedDropId?: string | null;
+  activeChairId?: string | null;
 }) {
   const position = { x, y, rotation };
-  const dropId = chairDropId(tableId, seatIndex);
 
   if (guest) {
     return (
@@ -299,7 +298,7 @@ export function ChairSeat({
       seatIndex={seatIndex}
       seatNumber={seatNumber}
       position={position}
-      isGlobalHoverTarget={highlightedDropId === dropId}
+      activeChairId={activeChairId}
     />
   );
 }

@@ -9,6 +9,8 @@ import {
 
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@/lib/seating-layout";
 
+import { studioCanvasScroll, studioCanvasViewport } from "./seating-ui";
+
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 1.5;
 const ZOOM_STEP = 0.1;
@@ -65,7 +67,7 @@ export function CanvasWorkspace({ children, error }: CanvasWorkspaceProps) {
   }, []);
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950">
+    <div className={studioCanvasViewport}>
       {error && (
         <p
           className="shrink-0 border-b border-red-900/40 bg-red-950/40 px-4 py-2 text-sm text-red-300"
@@ -75,44 +77,43 @@ export function CanvasWorkspace({ children, error }: CanvasWorkspaceProps) {
         </p>
       )}
 
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto overscroll-contain"
-      >
-        <div
-          className="inline-block p-6"
-          style={{
-            width: scaledWidth + CANVAS_PADDING * 2,
-            height: scaledHeight + CANVAS_PADDING * 2,
-          }}
-        >
+      <div className="relative min-h-0 flex-1 overflow-hidden border-x border-zinc-800/60 bg-[radial-gradient(ellipse_at_center,_rgba(39,39,42,0.35)_0%,_rgba(9,9,11,0.9)_70%)]">
+        <div ref={scrollRef} className={studioCanvasScroll}>
           <div
+            className="box-border p-6"
             style={{
-              width: scaledWidth,
-              height: scaledHeight,
+              width: scaledWidth + CANVAS_PADDING * 2,
+              minHeight: scaledHeight + CANVAS_PADDING * 2,
             }}
           >
             <div
               style={{
-                width: CANVAS_WIDTH,
-                height: CANVAS_HEIGHT,
-                transform: `scale(${zoom})`,
-                transformOrigin: "0 0",
+                width: scaledWidth,
+                height: scaledHeight,
               }}
             >
-              {children}
+              <div
+                style={{
+                  width: CANVAS_WIDTH,
+                  height: CANVAS_HEIGHT,
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "0 0",
+                }}
+              >
+                {children}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <CanvasViewControls
-        zoom={zoom}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onReset={resetView}
-        onFit={fitView}
-      />
+        <CanvasViewControls
+          zoom={zoom}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onReset={resetView}
+          onFit={fitView}
+        />
+      </div>
     </div>
   );
 }
@@ -131,7 +132,7 @@ function CanvasViewControls({
   onFit: () => void;
 }) {
   return (
-    <div className="pointer-events-none absolute right-4 top-4 z-20 flex flex-col gap-1">
+    <div className="pointer-events-none absolute bottom-4 right-4 z-20">
       <div className="pointer-events-auto flex flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900/95 shadow-lg shadow-black/40 backdrop-blur-sm">
         <ControlButton label="Zoom in" onClick={onZoomIn}>
           +

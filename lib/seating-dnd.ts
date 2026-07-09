@@ -84,3 +84,22 @@ export function chairDropData(
     seatIndex,
   };
 }
+
+export function activeChairIdFromOver(
+  over: { id: string | number; data: { current?: unknown } } | null,
+): string | null {
+  if (!over) {
+    return null;
+  }
+
+  const chair = parseChairDropData(over.data.current);
+  if (chair) {
+    return chairDropId(chair.tableId, chair.seatIndex);
+  }
+
+  if (isChairDropId(String(over.id))) {
+    return String(over.id);
+  }
+
+  return null;
+}

@@ -13,6 +13,7 @@ import {
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import {
+  activeChairIdFromOver,
   chairDropId,
   isGuestDragId,
   isLayoutTableDragId,
@@ -80,7 +81,7 @@ function SeatingCanvas({
   onDeselect,
   onSelectTable,
   onUnassignGuest,
-  highlightedDropId,
+  activeChairId,
 }: {
   eventId: string;
   tables: LayoutTable[];
@@ -90,7 +91,7 @@ function SeatingCanvas({
   onDeselect: () => void;
   onSelectTable: (tableId: string) => void;
   onUnassignGuest: (guestId: string) => void;
-  highlightedDropId: string | null;
+  activeChairId: string | null;
 }) {
   return (
     <div
@@ -137,7 +138,7 @@ function SeatingCanvas({
             isSelected={selectedTableId === table.id}
             onSelect={() => onSelectTable(table.id)}
             onUnassignGuest={onUnassignGuest}
-            highlightedDropId={highlightedDropId}
+            activeChairId={activeChairId}
           />
         ))
       )}
@@ -205,9 +206,7 @@ export function SeatingPlanEditor({
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [draggingTableId, setDraggingTableId] = useState<string | null>(null);
   const [activeGuestId, setActiveGuestId] = useState<string | null>(null);
-  const [highlightedDropId, setHighlightedDropId] = useState<string | null>(
-    null,
-  );
+  const [activeChairId, setActiveChairId] = useState<string | null>(null);
   const [createShape, setCreateShape] = useState<TableShape | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -319,12 +318,13 @@ export function SeatingPlanEditor({
   }
 
   function handleDragOver(event: DragOverEvent) {
-    const overId = event.over ? String(event.over.id) : null;
-    setHighlightedDropId(overId);
+    setActiveChairId(activeChairIdFromOver(event.over));
 
     if (!isGuestDragId(String(event.active.id))) {
       return;
     }
+
+    const overId = event.over ? String(event.over.id) : null;
 
     logSeatDnd("dragOver", {
       activeId: String(event.active.id),
@@ -335,7 +335,7 @@ export function SeatingPlanEditor({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    setHighlightedDropId(null);
+    setActiveChairId(null);
     const id = String(event.active.id);
 
     if (isLayoutTableDragId(id)) {
@@ -593,10 +593,10 @@ export function SeatingPlanEditor({
         </div>
       </div>
 
-      {SEAT_DND_DEBUG && highlightedDropId && (
+      {SEAT_DND_DEBUG && activeChairId && (
         <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 font-mono text-xs text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
-          Debug over: {highlightedDropId} ·{" "}
-          {JSON.stringify(parseDropTarget(highlightedDropId))}
+          Debug over: {activeChairId} ·{" "}
+          {JSON.stringify(parseDropTarget(activeChairId))}
         </p>
       )}
 
@@ -643,7 +643,7 @@ export function SeatingPlanEditor({
                   onDeselect={() => setSelectedTableId(null)}
                   onSelectTable={setSelectedTableId}
                   onUnassignGuest={handleUnassignGuest}
-                  highlightedDropId={highlightedDropId}
+                  activeChairId={activeChairId}
                 />
               </div>
             </div>
@@ -656,7 +656,7 @@ export function SeatingPlanEditor({
                   guestsBySeat={guestsBySeat}
                 />
               ) : activeGuest ? (
-                <GuestDragOverlay guest={activeGuest} eventId={eventId} />
+                <GuestDragOverlay guest={activeGuest} />
               ) : null}
             </DragOverlay>
           </DndContext>
